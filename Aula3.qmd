@@ -267,10 +267,31 @@ dbDisconnect(my_con)
 
 ```{r}
 
+# set file to read
+my_f <- afedR3::data_path('CH04_price-and-prejudice.txt')
 
+# read file line by line
+my_txt <- read_lines(my_f)
 
+# print 50 characters of first fifteen lines
+print(stringr::str_sub(string = my_txt[1:15], 
+                       start = 1, 
+                       end = 50))
 
 ```
 
+### Exportação
+
+```{r}
+# set file
+my_f <- tempfile(fileext = '.txt')
+
+# set some string
+my_text <- paste0('Today is ', Sys.Date(), '\n', 
+                  'Tomorrow is ', Sys.Date()+1)
+
+# save string to file
+readr::write_lines(x = my_text, file = my_f, append = FALSE)
+```
 
 
