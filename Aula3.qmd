@@ -3,14 +3,6 @@ title: "Aula 3"
 format: html
 ---
 
-## Instalar pacotes
-
-```{r}
-
-# install.packages('remotes')
-# remotes::install_github("msperlin/afedR3")
-```
-
 ## Caminho de Arquivos
 
 ```{r}
@@ -185,6 +177,7 @@ file_size_fst <- file.size(my_file_2)/1000000
 ## RSQLite
 
 ```{r}
+library(RSQLite)
 # set name of SQLITE file
 f_sqlite <- afedR3::data_path('CH04_example-sqlite.SQLite')
 
@@ -231,7 +224,7 @@ print(my_df_A)
 ## Exportação RSQLite
 
 ```{r}
-library(RSQLite)
+
 
 # set number of rows in df
 N = 10^6 
