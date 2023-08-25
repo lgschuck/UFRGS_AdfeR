@@ -3,7 +3,4 @@
 .RData
 .Ruserdata
 pacotes
-/bases/df2.RDS
-/bases/df2.csv
-/bases/df2.fst
-/bases/df2.xlsx
+bases

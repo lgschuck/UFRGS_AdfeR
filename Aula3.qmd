@@ -1,6 +1,8 @@
 ---
 title: "Aula 3"
-format: html
+format: 
+  html:
+    embed-resources: true
 ---
 
 ## Caminho de Arquivos
@@ -68,6 +70,7 @@ readr::write_csv(x = my_df, file = f_out)
 ## Excel
 
 ```{r}
+library(readxl)
 
 my_f <- afedR3::data_path("CH04_ibovespa-Excel.xlsx")
 
@@ -81,9 +84,7 @@ dplyr::glimpse(my_df)
 ```
 
 ```{r}
-
-library(xlsx)
-
+library(writexl)
 # set number of rows
 N <- 50
 
@@ -218,7 +219,7 @@ my_df_A <- RSQLite::dbGetQuery(conn = my_con,
 RSQLite::dbDisconnect(my_con)
 
 # print with str
-print(my_df_A)
+print(my_df_A[1:20,])
 ```
 
 ## Exportação RSQLite
