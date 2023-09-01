@@ -5,7 +5,7 @@ library(writexl)
 library(readxl)
 library(fst)
 
-setwd('C:/Users/luisg/OneDrive/Área de Trabalho/Ufrgs/Mestrado Adm/202302-ADFER/AdfeR/')
+setwd('C:/Users/luisg/OneDrive/Área de Trabalho/Cursos/Ufrgs/Mestrado Adm/202302-ADFER/AdfeR/')
 
 #==============================================================================
 # Questao 1

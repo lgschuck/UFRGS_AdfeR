@@ -1,0 +1,310 @@
+---
+title: "Atividade_Aula4"
+format: 
+  html:
+    embed-resources: true   
+---
+
+```{r}
+library(tidyverse)
+library(yfR)
+library(GetQuandlData)
+library(GetBCBData)
+library(GetDFPData2)
+
+options(scipen = 9999)
+
+```
+
+## Questao 1
+
+Utilizando pacote yfR, baixe os dados da ação MDIA3 (ticker MDIA3.SA) no Yahoo Finance para os últimos 30 dias.
+
+```{r}
+tickers <- "MDIA3.SA" 
+first_date <- Sys.Date() - 30 
+last_date <- Sys.Date()
+
+df_mdia3 <-
+  yf_get(tickers = tickers,
+         first_date = first_date,
+         last_date = last_date)
+min(df_mdia3$price_adjusted)
+```
+
+### Qual o preço ajustado mais baixo no período analisado? Qual a data com o preço mais baixo? Faça um gráfico simples com função plot()
+
+Resposta: 37.2
+
+### Qual a data com o preço mais baixo?
+
+```{r}
+df_mdia3[which(df_mdia3$price_adjusted == min(df_mdia3$price_adjusted)), ]$ref_date
+```
+
+Reposta: 2023-08-31
+
+### Faça um gráfico simples com função plot()
+
+```{r}
+plot(
+  df_mdia3$ref_date,
+  df_mdia3$price_adjusted,
+  type = 'b',
+  col =
+    'red',
+  main = paste('Preço Ajustado -', tickers),
+  xlab = 'Data',
+  ylab =
+    'Preço Ajustado'
+)
+```
+
+## Questao 2
+
+Caso não o tenha feito, crie um perfil no site do Quandl e salve o seu código de API. Com pacote GetQuandlData, baixe os dados da população brasileira do banco de dados do IMF entre 2000-01-01 e 2023-09-01. 
+
+### Qual é o último valor disponível?
+
+```{r}
+api_key <- readRDS('./conf/quantdl_ID.RDS')
+
+my_symbol <- c('IMF' = 'ODA/BRA_LP') 
+first_date <- '2000-01-01'
+last_date <- '2023-09-01'
+
+df_br_pop <-
+  get_Quandl_series(
+    id_in = my_symbol,
+    api_key = api_key,
+    first_date = first_date,
+    last_date = last_date
+  )
+
+ultima_pop <-
+  df_br_pop[df_br_pop$ref_date == max(df_br_pop$ref_date), ]$value
+
+ultima_pop
+```
+
+### Qual é o último valor disponível?
+
+Resposta: 213.862 milhões
+
+## Questao 3
+
+Utilize pacote GetBCBData para baixar dados do IPCA mensal (em % anual) nos últimos 5 anos. É possível observar algum período com deflação, inflação negativa, mensal?
+
+```{r}
+# 433 - Indice nacional de preços ao consumidor-amplo (IPCA) 
+id_series <- 433
+
+ano <- as.integer(format(Sys.Date(), '%Y'))
+
+# criar data 5 anos atras
+ano5 <- ano - 5
+
+first_date = paste0(ano5, '-01-01')
+
+df_inf <- gbcbd_get_series(id = id_series,
+                           first.date = first_date,
+                           last.date = Sys.Date())
+
+plot(df_inf$ref.date, df_inf$value) 
+abline(h = 0, col = 'brown3')
+
+deflacao <- df_inf |> 
+  dplyr::filter(value < 0)
+
+unique(deflacao$ref.date)
+```
+
+### É possível observar algum período com deflação, inflação negativa, mensal?
+
+Resposta: Sim nos meses: 08/2018, 11/2018, 09/2019, 04/2020, 05/2020,
+07/2022, 08/2022, 09/2022, 06/2023
+
+## Questao 4
+
+Visite o site de sistema de séries temporais do Banco Central do Brasil e escolha uma série para análise de acordo com seus próprios interesses de pesquisa. Importe a mesma usando pacote GetBCBData.
+
+```{r}
+# Serie - 7811 Taxa referencial (TR) - Primeiro dia do mês
+
+id_series <- 7811
+
+df_tr <- gbcbd_get_series(id = id_series, first.date = '2020-09-01')
+
+summary(df_tr$value)
+df_tr
+
+```
+
+## Questao 5
+
+Utilizando função GetDFPData2::get_info_companies, baixe informações sobre as ações negociadas na B3. 
+
+```{r}
+df_info_b3 <- GetDFPData2::get_info_companies()
+df_info_b3
+```
+
+### Quantas empresas no total estão atualmente disponíveis no banco de dados? 
+
+```{r}
+nrow(df_info_b3)
+```
+
+Resposta: 2584
+
+### Qual a proporção de empresas ativas (veja coluna SIT_REG)? 
+
+```{r}
+prop.table(table(df_info_b3$SIT_REG))*100
+```
+
+Resposta: 30.263 % das empresas estão ativas.
+
+### Qual a empresa mais antiga (veja coluna DT_REG)? 
+
+```{r}
+df_info_b3 |> 
+  dplyr::filter(DT_REG == min(df_info_b3$DT_REG)) |> 
+  dplyr::select(DT_REG, DENOM_SOCIAL)
+
+```
+
+Resposta: Empresa mais antiga é COTONIFICIO BELTRAMO SA, com data de registro 23/05/1923
+
+### Quantas empresas existem para o setor de "Alimentos"?
+
+```{r}
+
+df_info_b3 |> 
+  dplyr::filter(SETOR_ATIV == 'Alimentos') |> 
+  head()
+
+df_info_b3 |> 
+  dplyr::filter(SETOR_ATIV == 'Alimentos') |> 
+  nrow()
+  
+```
+
+Resposta: Existem 111 empresas do setor de Alimentos.
+
+## Questao 6
+
+Com pacote GetDFPData2, baixe os demostrativos financeiros mais recentes da Petrobras. 
+
+```{r}
+id_companies <- 9512
+first_year <- 2015
+last_year  <- 2022
+
+demonstracoes <- GetDFPData2::get_dfp_data(
+  companies_cvm_codes = id_companies,
+  type_docs = '*',
+  type_format = 'con',
+  first_year = first_year,
+  last_year = last_year
+)
+
+# conferir nome da companhia
+unique(demonstracoes$`DF Consolidado - Balanço Patrimonial Ativo`$DENOM_CIA)
+
+```
+
+### Qual foi o seu lucro líquido no exercício? 
+
+```{r}
+
+df_dre <- demonstracoes$`DF Consolidado - Demonstração do Resultado`
+
+df_dre |>
+  dplyr::filter(CD_CONTA == '3.11') |>
+  dplyr::mutate(VL_CONTA2 = VL_CONTA * 1e3) |> 
+  dplyr::select(DT_REFER, VL_CONTA2)
+
+```
+
+Resposta: Lucro do último exercício foi de 189,005 bilhões
+
+### Qual foi o pagamento de proventos para o acionista (dividendo ou JSCP) mais recente?
+
+```{r}
+
+df_dfc <- demonstracoes$`DF Consolidado - Demonstração do Fluxo de Caixa (Método Indireto)`
+
+df_dfc |>
+  select(DS_CONTA, CD_CONTA) |> 
+  dplyr::filter(str_detect(DS_CONTA, pattern = 'Dividendos Pagos') == T |
+                str_detect(DS_CONTA, pattern = 'Juros') == T) |> 
+  distinct() |> 
+  arrange(CD_CONTA)
+
+```
+
+Fazer a seleção das contas de Dividendos pagos a acionistas e JSCP
+
+```{r}
+df_pagtos <- df_dfc |>
+  dplyr::filter(str_detect(DS_CONTA, pattern = 'Dividendos Pagos') == T |
+                str_detect(DS_CONTA, pattern = 'Juros') == T) |> 
+  dplyr::filter(str_detect(DS_CONTA, pattern = 'Amortizações de Juros', negate = T) == T)
+
+df_pagtos |> 
+  dplyr::filter(DT_REFER == max(DT_REFER)) |> 
+  dplyr::select(DT_REFER, DS_CONTA, VL_CONTA) |> 
+  mutate(VL_CONTA * 1e3)
+
+```
+
+Resposta: São dois pagamentos feitos em 31/12/2020:
+  
+  R$ 6.209.000.000 - Dividendos Pagos a acionistas Petrobras
+  
+  R$ 448.000.000 - Dividendos Pagos a Acionistas não controladores
+
+## Questao 7
+
+Com base no pacote GetTDData, baixe dados para títulos do tipo LTN 
+(Letras Financeiras do Tesouro) entre 2022-04-19 e 2023-09-01.
+
+```{r}
+asset_codes <- 'LTN'   # Identifier of assets
+first_year <- 2022
+last_year <- 2023
+
+df_TD <- GetTDData::td_get(asset_codes, 
+                           first_year = first_year,
+                           last_year = last_year)
+
+df_TD <-  df_TD |>
+  dplyr::filter(ref_date >= as.Date('2022-04-19') &
+                                      ref_date <= as.Date('2023-09-01'))
+
+```
+
+### Entre todas LTNs, qual o título com maior data de vencimento? 
+
+```{r}
+df_TD |> 
+  dplyr::filter(matur_date == max(matur_date)) |> 
+  dplyr::pull(asset_code) |> 
+  unique()
+
+```
+
+Resposta: o título com maior vencimento é LTN 010129
+
+### Entre todas LTNs, qual o título de menor preço atualmente (última data)?
+
+```{r}
+df_TD |> 
+  dplyr::filter(ref_date == max(ref_date)) |> 
+  dplyr::filter(price_bid == min(price_bid)) |> 
+  dplyr::pull(asset_code) |> 
+  unique()
+```
+
+Resposta: o título menor preço (da última data) é LTN 010129
