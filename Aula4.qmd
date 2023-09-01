@@ -59,7 +59,7 @@ dplyr::glimpse(df_quandl)
 
 ## Dados de Inflação
 
-```{r}
+```{r eval = F}
 # databse to get info
 db_id <- 'RATEINF'
 first_date <- '2015-01-01'
