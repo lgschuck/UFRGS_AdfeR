@@ -1,0 +1,417 @@
+---
+title: "Atividade_Moodle_02"
+format: 
+  html:
+    embed-resources: true
+---
+
+```{r}
+library(afedR3)
+library(tidyverse)
+library(yfR)
+library(GetDFPData2)
+```
+
+
+### Questão 1
+
+Com pacote afedR3, carregue os dados do arquivo EX_football-br.csv (note que a codificação do arquivo é “latin1”). Este arquivo contém informações de jogos da seleção brasileira retirados do Google. Qual é a soma de todos os valores da coluna GolsBR?
+
+Escolha uma opção:
+
+a. 162
+b. 154
+c. 272
+d. 237
+e. 186
+
+```{r}
+afedR3::data_list()
+
+caminho_football <- afedR3::data_path('EX_football-br.csv')
+
+my_locale <- readr::locale(decimal_mark = ',',
+                            encoding = 'Latin1')
+
+df_football <- readr::read_delim(
+  file = caminho_football, 
+  delim = ',',
+  locale = my_locale
+)
+
+sum(df_football$GolsBR)
+
+```
+
+### Questão 2
+
+Para os mesmos dados anteriores (arquivo EX_football-br.csv), qual a percentagem de jogos ocorridos no sábado?
+
+Escolha uma opção:
+
+a. 9,15%
+b. 18,73%
+c. 19,60%
+d. 12,20%
+e. 13,50%
+
+```{r}
+
+df_football <- df_football |> 
+  mutate(dia_semana_jogo = weekdays(Data))
+
+df_football_resumo <- df_football |> 
+  group_by(dia_semana_jogo) |> 
+  summarise(qtde_jogos_dia = n()) |> 
+  ungroup() |> 
+  mutate(total_jogos = sum(qtde_jogos_dia)) |> 
+  mutate(percentual = qtde_jogos_dia/total_jogos)
+
+df_football_resumo |> 
+  filter(dia_semana_jogo == 'sábado') |> 
+  pull(percentual) * 100
+
+```
+
+### Questão 3
+
+Para os mesmos dados anteriores (arquivo EX_football-br.csv), qual a percentagem de partidas em que o Brasil foi vitorioso (veja saldo de gols)?
+
+Escolha uma opção:
+
+a. 59,76%
+b. 78,05%
+c. 65,85%
+d. 52,44%
+e. 84,15%
+
+```{r}
+df_football <- df_football |> 
+  mutate(vitoria = GolsBR > GolsAdv) |> 
+  mutate(total_vitorias=sum(vitoria),
+         total_jogos = n()) |> 
+  mutate(perc_vitorias = total_vitorias/total_jogos)
+  
+
+df_football |> 
+  pull(perc_vitorias) |> 
+  head(1) * 100
+
+```
+
+### Questão 4
+
+Para os mesmos dados anteriores (arquivo EX_football-br.csv), calcule a soma de todos os gols a favor e diminua a soma de todos os gols contra. Qual é o resultado?
+
+Escolha uma opção:
+
+a. 180
+b. 123
+c. 111
+d. 161
+e. 142
+
+```{r}
+df_football <- df_football |> 
+  mutate(total_gols_BR = sum(GolsBR, na.rm = T),
+         total_gols_adv = sum(GolsAdv, na.rm = T)) |> 
+  mutate(saldo_gols = total_gols_BR - total_gols_adv)
+
+df_football |> 
+  pull(saldo_gols) |> 
+  head(1)
+```
+
+### Questão 5
+
+Com base nos mesmos dados de jogos do brasil (arquivo EX_football-br.csv do pacote afedR3), crie uma nova coluna na dataframe importado com a diferença absoluta (sem o sinal) entre os gols feitos e tomados para cada jogo. Qual foi a seleção e a data do jogo com mais diferença absoluta de gols?
+
+Escolha uma opção:
+
+a. Paraguay - 2016-03-29
+b. China - 2012-09-10
+c. Croácia - 2014-06-12
+d. Argentina - 2016-11-10
+e. Portugal - 2010-06-25
+
+```{r}
+df_football <- df_football |> 
+  mutate(dif_gol_jogo = GolsBR - GolsAdv) |> 
+  mutate(dif_gol_jogo_abs = abs(dif_gol_jogo))
+
+df_football |> 
+  filter(dif_gol_jogo_abs == max(dif_gol_jogo_abs))
+```
+
+### Questão 6
+
+Carrege os dados do arquivo EX_ibovespa.rds, pacote afedR3, e responda a seguinte pergunta. Qual é a data do máximo retorno aritmético do índice ibovespa?
+
+Escolha uma opção:
+
+a. 2008-09-01
+b. 2008-09-13
+c. 2009-03-06
+d. 2008-12-09
+e. 2008-10-13
+
+```{r}
+
+caminho_ibovespa <- afedR3::data_path('EX_ibovespa.rds')
+
+df_ibovespa <- readRDS(caminho_ibovespa)
+
+df_ibovespa |> 
+  filter(ret_closing_prices == max(ret_closing_prices))
+
+df_ibovespa |> 
+  filter(ret_adjusted_prices == max(ret_adjusted_prices))
+
+
+```
+
+### Questão 7
+
+Para os mesmos dados do arquivo EX_ibovespa.rds, qual o retorno aritmético total do ibovespa desde o início dos dados disponíveis?
+
+Escolha uma opção:
+
+a. 86,27%
+b. 49,74%
+c. 95,96%
+d. 122,37%
+e. 102,56%
+
+```{r}
+preco_inicial <- df_ibovespa |>
+  filter(ref_date == min(ref_date)) |>
+  pull(price_close)
+
+preco_final <- df_ibovespa |> 
+  filter(ref_date == max(ref_date)) |> 
+  pull(price_close)
+
+(preco_final/preco_inicial - 1) * 100
+```
+
+### Questão 8
+
+Considerando os retornos do Ibovespa (arquivo EX_ibovespa.rds), quantas vezes o sinal do retorno repetiu-se ao longo do tempo? Isto é, quantas dias existem onde um retorno positivo (negativo) é seguido por outro retorno positivo (negativo)?
+
+Escolha uma opção:
+
+a. 848
+b. 1211
+c. 2423
+d. 1827
+e. 1575
+
+```{r}
+
+df_ibovespa <- df_ibovespa |> 
+  mutate(retorno_ant = lag(ret_closing_prices)) |> 
+  mutate(sinal = if_else((retorno_ant > 0 & ret_closing_prices > 0)|
+           (retorno_ant < 0 & ret_closing_prices < 0), 1,0))
+
+sum(df_ibovespa$sinal, na.rm = T)
+
+```
+
+### Questão 9
+
+Using the yfR package, download daily data for ticker TSLA from Yahoo Finance for the period between 2019-01-01 and 2020-09-23. What is the lowest unadjusted closing price (column price_close) in the analyzed period?
+
+Escolha uma opção:
+
+a. 11.931
+b. 7.214
+c. 3.835
+d. 10.592
+e. 8.340
+
+```{r}
+
+my_tickers <- "TSLA"
+first_date <- '2019-01-01'
+last_date <- '2020-09-23'
+
+df_tsla <- yfR::yf_get(tickers = my_tickers,
+                     first_date = first_date,
+                     last_date = last_date)
+
+min(df_tsla$price_close)
+
+```
+
+### Questão 10
+
+If you have not already done so, create a profile on the Quandl website1 and download the arabica coffee price data (id = CEPEA/COFFEE_A) in the CEPEA database (Center for Advanced Studies in Applied Economics) between 2010-01-01 and 2023-04-29. What is the maximum price found?
+
+Escolha uma opção:
+
+a. R$ 349
+b. R$ 481
+c. R$ 446
+d. R$ 321
+e. R$ 410
+
+```{r}
+my_symbol <- c('CEPEA' = 'CEPEA/COFFEE_A')
+first_date <- '2010-01-01'
+last_date <- '2023-04-29'
+
+my_api_key <- readRDS('conf/quantdl_ID.RDS')
+
+# get data!
+df_coffee <- GetQuandlData::get_Quandl_series(
+  id_in = my_symbol,
+  api_key = my_api_key, 
+  first_date = first_date,
+  last_date = last_date
+)
+
+df_coffee <- df_coffee |> 
+  mutate(price = as.double(`Cash Price US$`))
+
+max(df_coffee$price)
+
+```
+
+### Questão 11
+
+Using again the yfR package, download data between 2019-01-01 and 2022-02-28 for the following tickers:
+
+AAPL: Apple Inc
+BAC: Bank of America Corporation
+GE: General Electric Company
+TSLA: Tesla, Inc.
+SNAP: Snap Inc.
+
+Using the adjusted closing price column, what company provided higher return to the stock holder during the analyzed period?
+
+Tip: this is an advanced exercise that will require some coding. To solve it, check out function split to split the dataframe of price data and lapply to map a function to each dataframe.
+
+Escolha uma opção:
+
+a. BAC
+b. GE
+c. TSLA
+d. SNAP
+e. AAPL
+
+```{r}
+my_tickers <- c('AAPL', 'BAC', 'GE', 'TSLA', 'SNAP')
+first_date <- '2019-01-01'
+last_date <- '2022-02-28'
+
+df_stocks <- yfR::yf_get(tickers = my_tickers,
+                     first_date = first_date,
+                     last_date = last_date)
+
+df_stocks2 <- df_stocks |> 
+  group_by(ticker) |> 
+  filter(ref_date == min(ref_date) | ref_date == max(ref_date)) |> 
+  mutate(preco_inicial = ifelse(ref_date == min(ref_date), price_close, 0),
+         preco_final = ifelse(ref_date == max(ref_date), price_close, 0))
+
+df_stocks3 <- df_stocks2 |> 
+  group_by(ticker) |> 
+  summarise(preco_inicial = max(preco_inicial),
+            preco_final = max(preco_final)) |> 
+  mutate(retorno = preco_final/preco_inicial - 1)
+
+df_stocks3 |> 
+  arrange(-retorno) |> 
+  head(1)
+```
+
+### Questão 12
+
+Using package GetDFPData2, download the main table with all available companies. What is the number of active companies currently available?
+
+Escolha uma opção:
+
+a. 588
+b. 947
+c. 827
+d. 782
+e. 977
+
+```{r}
+
+df_cia <- get_info_companies()
+
+table(df_cia$SIT_REG)
+
+```
+
+### Questão 13
+
+Using package GetDFPData2, download net income data (consolidated) for all companies in the year of 2020. What is the sum of profit/loss (in thousands, code 3.11 in DFP) for all companies?
+
+Escolha uma opção:
+
+a. R$ 275.172.881
+b. R$ 455.138.268
+c. R$ 221.763.798
+d. R$ 408.695.587
+e. R$ 248.468.340
+
+```{r}
+# id_companies <- df_cia |> 
+#   filter(SIT_REG == 'ATIVO') |> 
+#   pull(CD_CVM)
+
+id_companies <- df_cia$CD_CVM
+
+# download data
+l_dfp <- GetDFPData2::get_dfp_data(
+  companies_cvm_codes = id_companies,
+  type_docs = '*', # get all docs  
+  type_format = 'con', # consolidated
+  first_year = 2020,
+  last_year = 2020
+)
+
+df_dre <- l_dfp$`DF Consolidado - Demonstração do Resultado`
+
+df_dre |> filter(CD_CONTA == '3.11') |> 
+  pull(VL_CONTA) |> 
+  sum()
+
+```
+
+### Questão 14
+
+Using package GetTDData, download all available data for debt contract of type LTN (pré-fixados).
+
+What is the maximum yield (column yield.bid) found for for contract LTN 010115?
+
+Escolha uma opção:
+
+a. 19.77%
+b. 17.36%
+c. 14.96%
+d. 13.09%
+e. 18.97%
+
+```{r}
+
+asset_codes <- 'LTN'
+first_year <- 1900
+last_year <- 2023
+
+# download
+df_TD <- GetTDData::td_get(asset_codes, 
+                           first_year = first_year,
+                           last_year = last_year)
+
+
+
+df_TD |> 
+  filter(asset_code == 'LTN 010115') |> 
+  pull(yield_bid) |> 
+  max() * 100
+
+
+```
