@@ -1,0 +1,209 @@
+---
+title: "Atividade Aula 5"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup}
+knitr::opts_chunk$set(error = T)
+```
+
+## Carregar Pacotes
+
+```{r}
+library(tidyverse)
+# library(GetQuandlData)
+library(yfR)
+# library(GetTDData)
+# library(GetBCBData)
+# library(GetDFPData2)
+library(skimr)
+
+api_key <- readRDS('./conf/quantdl_ID.RDS')
+```
+
+## Questão 1
+
+1 - Crie um dataframe chamado my_df com uma coluna chamada x contendo
+uma sequência de 1 a 100 e outra coluna chamada y com o valor da coluna
+x adicionada de 5. Usando código, qual a quantidade de valores em x
+maiores que 10 e menores que 25?
+
+```{r}
+x <- 1:100
+my_df <- data.frame(x = x, y = x + 15)
+
+my_df |> 
+  dplyr::filter(x > 10) |> 
+  nrow()
+
+my_df |> 
+  dplyr::filter(x < 25) |> 
+  nrow()
+
+```
+
+## Questão 2
+
+2 - Use função dplyr::mutate para criar uma nova coluna em my_df chamada
+cumsum_x, contendo a soma cumulativa de x (função base::cumsum()). Desta
+nova coluna, quantos valores são maiores que 50?
+
+```{r}
+my_df <- my_df |> 
+  dplyr::mutate(cumsum_x = cumsum(x))
+
+my_df |> 
+  filter(cumsum_x > 50) |> 
+  nrow()
+
+```
+
+## Questão 3
+
+3 - Com função dplyr::filter(), filtre o dataframe my_df para manter
+apenas as linhas onde o valor da coluna x é maior que 25.
+
+```{r}
+
+my_df <- my_df |> 
+  filter(x > 25)
+```
+
+## Questão 4
+
+4 - Utilize pacote yfR para baixar dados da ação do META/Facebook (META)
+desde a data '2010-01-01' até hoje. Filtre os dados para mentar apenas
+dados onde o dia da semana era segunda feira.
+
+```{r}
+tickers <- "META" 
+first_date <- '2010-01-01'
+last_date <- '2023-09-15'
+
+df_meta <-
+  yf_get(tickers = tickers,
+         first_date = first_date,
+         last_date = last_date)
+
+df_meta <- df_meta |> 
+  mutate(dia_semana = weekdays(ref_date)) |> 
+  filter(dia_semana == 'segunda-feira')
+  
+```
+
+## Questão 5
+
+5 - Importe os dados disponíveis no arquivo CH11_grunfeld.csv,
+disponível no arquivo com os dados do livro. Utilize funções
+dplyr::glimpse, summary e skimr::skim para conhecer os dados importados.
+
+```{r}
+
+df_grunfeld_path <- afedR3::data_path("CH11_grunfeld.csv")
+
+df_grunfeld <- readr::read_csv(df_grunfeld_path)
+dplyr::glimpse(df_grunfeld)
+
+summary(df_grunfeld)
+
+skimr::skim(df_grunfeld)
+```
+
+## Questão 6
+
+6 - Crie um objeto do tipo lista com três dataframes em seu conteúdo,
+df1, df2 e df3. O conteúdo e tamanho dos dataframes é livre. Utilize
+função sapply para descobrir o número de linhas e colunas em cada
+dataframe.
+
+```{r}
+
+lista <-
+  list(df1 = mtcars,
+       df2 = iris,
+       df3 = as.data.frame(state.name))
+
+sapply(lista, nrow)
+sapply(lista, ncol)
+```
+
+## Questão 7
+
+7 - Usando pacote yfR, baixe os dados da Petrobras (PETR4.SA) e do
+índice ibovespa (\^BVSP) em dois dataframes diferentes (duas chamadas da
+função yfR::yf_get). Empilhe os dados das duas ações com o comando
+dplyr::bind_rows.
+
+```{r}
+tickers_petr4 <- "PETR4.SA" 
+
+df_petr4 <-
+  yf_get(tickers = tickers_petr4)
+
+tickers_ibov <- "^BVSP" 
+
+df_ibov <-
+  yf_get(tickers = tickers_ibov)
+
+
+df_empilhado <- dplyr::bind_rows(df_petr4, df_ibov)
+
+dplyr::glimpse(df_empilhado)
+```
+
+## Questão 8
+
+8 - Usando os mesmos dados do exercício anterior, crie uma nova coluna
+na tabela da Petrobras com os retornos do índice ibovespa. A tabela
+resultante deve ser como a apresentada a seguir:
+
+| ref_date   | ret_petr3 | ret_ibov |
+|------------|-----------|----------|
+| 2023-09-15 | 100.7663  | 100.3900 |
+| 2023-09-16 | 100.8506  | 101.1673 |
+| 2023-09-17 | 101.7259  | 102.1279 |
+| 2023-09-18 | 102.0650  | 102.5626 |
+| 2023-09-19 | 102.9044  | 103.2751 |
+| 2023-09-20 | 103.2511  | 103.6751 |
+| 2023-09-21 | 103.5849  | 104.0004 |
+| 2023-09-22 | 104.0612  | 104.7575 |
+| 2023-09-23 | 104.9534  | 104.9602 |
+| 2023-09-24 | 105.8177  | 105.6713 |
+
+Note que precisarás:
+
+renomear e selecionar colunas da tabela da Petrobras renomear e
+selecionar colunas da tabela do Ibovespa realizar o "merge" das tabelas
+usando as datas como referências
+
+```{r}
+nomes_petr4 <- paste0(names(df_petr4), '_petr4')
+
+df_petr4_retorno <- df_petr4 |> 
+  select(ref_date, cumret_adjusted_prices) |> 
+  mutate(cumret_adjusted_prices = 
+           cumret_adjusted_prices * 100) |> 
+  rename(ret_petr4 = cumret_adjusted_prices)
+
+df_ibov_retorno <- df_ibov |> 
+  select(ref_date, cumret_adjusted_prices) |> 
+  mutate(cumret_adjusted_prices = 
+           cumret_adjusted_prices * 100) |> 
+  rename(ret_ibov = cumret_adjusted_prices)  
+
+df_retornos <- full_join(df_petr4_retorno, 
+                         df_ibov_retorno,
+                         by = 'ref_date')
+
+options(pillar.sigfig = 6)
+df_retornos
+```
+
+Referências Perlin, Marcelo S. 2021. adfeR: Data, Exercises and
+Functions for Book "Analise de Dados Financeiros e Economicos Com o r".
+https://github.com/msperlin/adfedR/. ADFER - UFRGS
