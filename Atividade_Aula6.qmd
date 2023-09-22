@@ -1,0 +1,197 @@
+---
+title: "Atividade Aula 6"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup}
+knitr::opts_chunk$set(error = T)
+```
+
+## Carregar Pacotes
+
+```{r}
+library(tidyverse)
+library(yfR)
+
+```
+
+## Questão 1
+
+Crie uma função chamada say_my_name() que tome como entrada um nome de pessoa e mostre na tela o texto Your name is …. Dentro do escopo da função, utilize comentários para descrever o propósito da função, suas entradas e saídas.
+
+```{r}
+say_my_name <- function(nome){
+  # criar texto a imprimir com o parametro nome
+  texto_imprimir <- paste('Your name is', nome)
+
+  # retornar o texto
+  return(texto_imprimir)
+} 
+
+say_my_name('Luis')
+```
+
+## Questão 2
+
+Implemente um teste para os objetos de entrada, de forma que, quando o nome de entrada não for da classe character, um erro é retornado ao usuário. Teste sua nova função e verifique se a mesma está funcionando conforme esperado.
+
+```{r, error = T}
+say_my_name <- function(nome){
+  
+  # testar classe do parametro nome
+  if(class(nome) != "character"){
+    stop(paste('Argumento nome deve ser do tipo character, informado:', class(nome)))
+  }
+  
+  # criar texto a imprimir com o parametro nome
+  texto_imprimir <- paste('Your name is', nome)
+
+  # retornar o texto
+  print(texto_imprimir)
+}
+
+say_my_name(10L) # entrada integer
+say_my_name(10) # entrada numeric
+say_my_name(T) # entrada logica
+say_my_name('Luis') # entrada character
+```
+
+## Questão 3
+
+Crie um vetor com cinco nomes quaisquer, chamado my_names. Utilizando um loop, aplique função say_my_name para cada elemento de my_names.
+
+
+```{r}
+my_names <- c('Ana', 'Bianca', 'Carla', 'Daiana', 'Elen')
+
+for (nome in my_names){
+  say_my_name(nome)
+}
+
+```
+
+## Questão 4
+
+No banco de dados do Brasil.IO1 encontrarás uma tabela com nomes e gêneros derivados de uma das pesquisas do IBGE. Importe os dados do arquivo para R e, usando um loop, aplique a função say_my_name a 15 nomes aleatórios do banco de dados. Dica: neste caso, você pode baixar os dados direto do link usando readr::read_csv(LINK).
+
+```{r}
+
+grupos <- readr::read_csv('https://data.brasil.io/dataset/genero-nomes/grupos.csv.gz')
+
+aleatorios <- sample(1:nrow(grupos), 15)
+
+for(i in aleatorios){
+  say_my_name(grupos[i,]$name)
+}
+
+```
+
+## Questão 5
+
+Use o pacote yfR para baixar dados do índice SP500 ('^GSPC'), Ibovespa ('^BVSP'), FTSE ('^FSTE') e Nikkei 225 ('^N225') de '2010-01-01' até a data atual. Com os dados importados, use um loop para calcular o retorno médio, máximo e mínimo de cada índice durante o período analisado. Salve todos os resultados em uma tabela única e a mostre no prompt do R.
+
+```{r}
+
+tickers <- c('^GSPC', '^BVSP', '^FTSE','^N225')
+
+first_date <- '2010-01-01'
+last_date <- Sys.Date()
+
+df <- yf_get(tickers = tickers,
+             first_date = first_date,
+             last_date = last_date)
+
+# loop para calcular e juntar valores de cada indice
+for (i in 1:length(tickers)){
+
+  indice <- tickers[i]  
+  retorno_medio <- mean(df[df$ticker == indice,]$ret_adjusted_prices, na.rm = T)
+  retorno_minimo <- min(df[df$ticker == indice,]$ret_adjusted_prices, na.rm = T)
+  retorno_maximo <- max(df[df$ticker == indice,]$ret_adjusted_prices, na.rm = T)
+
+  if (i == 1){
+  retorno_indices <- data.frame(indice = indice,
+                               media = retorno_medio,
+                               minimo = retorno_minimo,
+                               maximo = retorno_maximo)  
+  } else {
+    retorno_indices <- bind_rows(retorno_indices,
+                                data.frame(indice = indice,
+                                           media = retorno_medio,
+                                           minimo = retorno_minimo,
+                                           maximo = retorno_maximo))  
+  }
+}
+
+retorno_indices <- retorno_indices[order(retorno_indices$indice),]
+retorno_indices
+```
+
+## Questão 6
+
+Refaça o exercício anterior utilizando as funções group_by e summarise, ambas do pacote dplyr.
+
+```{r}
+
+retornos_dplyr <- df |> 
+  na.omit() |> 
+  group_by(ticker) |> 
+  summarise(media = mean(ret_adjusted_prices),
+            minimo = min(ret_adjusted_prices),
+            maximo = max(ret_adjusted_prices)) |> 
+  rename('indice' = 'ticker')
+            
+retornos_dplyr
+
+```
+
+## Questão 7
+
+No site do Rstudio CRAN logs você encontrará dados sobre as estatísticas de download para a distribuição de base de R na seção Daily R downloads. Usando suas habilidades de programação, importe todos os dados disponíveis entre 2015-01-01 e 2023-09-22 e agregue-os em uma única tabela. Qual país apresenta a maior contagem de downloads do R?
+
+```{r}
+Sys.time()
+# ficou muito grande, fiz de 2021/12 em diante
+inicio <- as.Date('2021-12-01')
+fim <- as.Date('2023-09-21')
+
+todos_dias <- seq(inicio, fim, by = 'day')
+anos <- as.POSIXlt(todos_dias)$year + 1900
+
+# funcao para leitura
+ler_downloads <- function(dia, ano){
+  caminho <- paste0('http://cran-logs.rstudio.com/', ano, '/', dia, '-r.csv.gz')
+  # ler dados
+  x <- readr::read_csv(caminho, 
+                       col_select = c('date', 'country'),
+                       show_col_types = FALSE)
+  return(x)
+}
+
+# ler primeiro arquivo
+retorno <- ler_downloads(todos_dias[1], anos[1])
+
+for (i in 2:length(todos_dias)){
+  # print(paste('Lendo dia:', todos_dias[i]))
+  retorno <- rbind(retorno, 
+                   ler_downloads(todos_dias[i], anos[i]))
+
+}
+
+Sys.time()
+
+pais_mais_downloads <- retorno |> 
+  group_by(country) |> 
+  summarise(qtde = n()) |> 
+  arrange(-qtde) |> 
+  head(n = 1)
+
+pais_mais_downloads
+
+```
+
