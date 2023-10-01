@@ -1,0 +1,278 @@
+---
+title: "Atividade Aula 7"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup}
+knitr::opts_chunk$set(error = T)
+```
+
+## Carregar Pacotes
+
+```{r}
+library(tidyverse)
+library(yfR)
+
+```
+
+## Questão 1
+
+O grupo [LatinoMetrics](https://latinometrics.substack.com/) produz e
+distribui um conteúdo muito interessante de visualização de dados
+econômicos para a América Latina. Observando o material do Instagram,
+visualize as seis últimas imagens disponibilizadas na página principal.
+Observando as figuras como um todo, destaque os elementos comuns na
+criação das imagens. Isto, é, destaque os elementos visuais que foram
+repetidos entre uma figura e outra.
+
+Resposta:
+
+-   Todos possuem título bem destacado
+
+-   Eixos formatados para melhor visualização
+
+-   "Paletas' de cores para destaque (temas padronizados)
+
+-   Em geral todos possuem cores "especiais" e legendas para destacar os
+    dados
+
+## Questão 2
+
+No Reddit é possível encontrar o grupo
+[r/dataisugly](https://www.reddit.com/r/dataisugly/), o qual contém
+inúmeros posts sobre visualizações de dados realizadas da forma errada.
+Na data de 27/09/2022 foi publicado a seguinte
+[mensagem](https://www.reddit.com/r/dataisugly/comments/xphz87/polls_for_upcoming_s%C3%A3o_paulo_state_governor/)no
+fórum. Analise o gráfico e, sem buscar a resposta no fórum, indique qual
+o problema com o gráfico.
+
+Resposta:
+
+-   A escala do eixo Y está "deformada" sendo a distância de 20 até 21%
+    muito semelhante à distância de 21 até 31%. Neste formato o gráfico
+    minimiza a "superioridade" da linha vermelha e destaca as demais,
+    criando noção de proximidade.
+
+## Questão 3
+
+Em 22/09/2022, o grupo
+[LatinoMetrics](https://latinometrics.substack.com/) publicou uma
+visualização de dados a respeito da impressão de confiança da população
+brasileira em relação as diferens mídias jornalísticas. O conteúdo pode
+ser acessado no
+[Instagram](https://www.instagram.com/p/Ciz8mFSrZj7/%5D). Observando a
+figura, destaque os elementos textuais e gráficos utilizados pelo autor.
+
+Resposta:
+
+-   Principais elementos:
+
+    -   Título formatada
+
+    -   Legendas formatadas
+
+    -   Eixo X formatado
+
+    -   Fonte dos dados no rodapé
+
+    -   Paleta de cores intuitiva para percepção de bom e ruim
+
+## Questão 4
+
+[Statspanda](https://www.instagram.com/statspanda/?hl=en)é outro grupo
+especializado em produção de conteúdo relacionado a visualização de
+dados, porém com assuntos muito mais abrangentes que o LatinoMetrics. Em
+17/09/2022, o grupo publicou a seguinte figura no
+[Instagram](https://www.instagram.com/p/CaFZoVpO3gc/?hl=en). Neste caso,
+quais foram os elementos gráficos utilizados pelo autor e como os mesmos
+se associam a mensagem da figura.
+
+Resposta:
+
+-   No eixo X existe cor diferente para Covid19 e a imagem grande no
+    meio do gráfico chamam atenção para Covid-19
+
+-   Existem imagens dentro das barras para indicar outros tipos de
+    doenças facilitando a leitura
+
+-   Entendo que os principais elementos aqui são a própria barra e a
+    linearidade do exio Y, mostrando que a Covid-19 está em magnitude
+    bem inferior a muitas outras doenças em números de mortes. O gráfico
+    contextuaiza muit bem a gravidade de outras doenças em relação à
+    Covid-19.
+
+## Questão 5
+
+No
+[Reddit/dataisbeautiful](https://www.reddit.com/r/dataisbeautiful/comments/xoqi8w/revenue_and_budget_comparison_for_every_star_wars/)
+é possível encontrar a visualização da receita de todos os filmes da
+franchise Star Wars. Apesar de ser esteticamante interessante, o mesmo
+poderia ser melhorado. Com base no que aprendeu neste capítulo do livro,
+analise o gráfico e faça recomendações para sua melhoria buscando sempre
+maior claridade e simplicidade.
+
+Resposta:
+
+-   O nome dos filmes estão muito pequenos dificultando saber qual é
+    qual, poderim ser aumentados ou reajustados de posição
+
+-   Os valores das receitas e do "budget" estão muito pequenos, poderiam
+    ser aumentados ou reajustados de posição
+
+-   A imagem em vermelho com fundo preto deixa a leitura bastante
+    desconfortável, poderia ser usada outra cor mais suave (em geral
+    elementos em 3D prejudicam a visualização)
+
+-   Ordenação as barras poderia ser feita do maior para o menor
+
+-   Não existe referência a fonte dos dados de receitas, "budget" e
+    inflação usada para reajuste
+
+## Questão 6
+
+Em um novo script do R, crie um vetor de valores aleatórios da
+distribuição Normal com o comando rnorm(N), onde N é igual a 100. Agora,
+crie um gráfico de pontos onde o eixo y é representado pela série
+anterior, e o eixo x é simplesmente a contagem dos valores (1..100).
+Para este gráfico, utilize o template básico do ggplot2, isto é, não
+precisas modificar nenhum elemento textual do gráfico, por enquanto.
+
+Resposta:
+
+```{r}
+valores <- rnorm(100)
+contagem <- 1:100
+
+df_q6 <- data.frame(valores = valores,
+                    contagem = contagem)
+
+pq6 <- ggplot(df_q6, aes(x = contagem, y = valores)) +
+  geom_point()
+
+pq6
+```
+
+## Questão 7
+
+Para o gráfico anterior, adicione os seguintes elementos textuais e
+gráficos:
+
+-   título, subtítulo;
+
+-   caption com a data e tempo de compilação do gráfico;
+
+-   textos nos eixos x e y;
+
+-   aplique o tema theme_light
+
+```{r}
+pq7 <- pq6 + 
+  labs(
+    title = 'Valores Aleatórios',
+    subtitle = 'Dados Gerados a partir de Distriuição Normal',
+    caption = paste('Gerado em:', Sys.time()),
+    x = 'Contagem de Valores',
+    y = 'Dados Aeatórios'
+  ) +
+  theme_light()
+
+pq7
+```
+
+## Questão 8
+
+Para o mesmo gráfico anterior, adicione uma nova coluna chamada type no
+dataframe, a qual pode tomar o valor "A" ou "B". Para isto, podes usar o
+comando sample(c("A", "B"), size = N, replace = TRUE). Note que o valor
+de N foi definido anteriormente. Com base no novo dataframe, crie um
+gráfico de linhas com cores diferentes para cada valor em type.
+
+```{r}
+df_q6$type <- sample(c("A", "B"), size = 100, replace = TRUE)
+
+pq8 <- ggplot(df_q6, aes(x = contagem, 
+                        y = valores,
+                        color = type)) +
+  geom_point()
+
+pq8
+```
+
+## Questão 9
+
+Para o mesmo gráfico anterior, adicione uma camada de linhas no gráfico.
+
+```{r}
+pq9 <- pq8 + geom_line()
+  
+pq9
+
+```
+
+## Questão 10
+
+Com base na função yfR::yf_collection_get, baixe os dados de preços de
+ações para a composição atual do índice Ibovespa, com início a cinco
+anos atrás e término como sendo a data atual. Com base nos dados
+importados, siga os seguintes passos:
+
+-   filtre os dados para manter apenas as 5 ações com maior
+    rentabilidade acumulado na período, e as 5 com menor.
+
+-   construa uma figura com os retornos acumulados das 10 ações
+    selecionadas anteriormente, onde o eixo horizontal representa as
+    datas.
+
+-   Implemente as seguintes modificações no gráfico:
+
+    -   Adicione título, subtítulo e caption e também o texto dos eixo
+        horizontal e vertical;
+
+    -   modifique a escala do eixo horizontal para percentagens com
+        comando scale_y_continuous(labels = scales::percent);
+
+    -   use o tema theme_light;
+
+-   exporte a figura resultante para um arquivo de tamanha tamanho 10 cm
+    (height) X 15 cm (width) chamado "fig-ibov-10-ações.png", e
+    localizado na pasta padrão "Documentos" (atalho com \~);
+
+```{r}
+df_ibov <- yf_collection_get('IBOV', 
+                             Sys.Date() - 5 * 365)
+
+```
+
+```{r}
+df_perf <- df_ibov |> 
+  dplyr::group_by(ticker) |> 
+  dplyr::summarise(
+    ret_total = dplyr::last(cumret_adjusted_prices)) |> 
+  dplyr::mutate(ret_total = ret_total - 1) |> 
+  ungroup() |> 
+  arrange(-ret_total)
+
+df_perf
+
+best_5 <- head(df_perf$ticker, 5)
+worst_5 <- tail(df_perf$ticker, 5)
+
+df_best_worst <- df_ibov |> 
+  filter(ticker %in% c(best_5, worst_5))
+
+pq10 <- ggplot(df_best_worst, 
+               aes(x = ref_date,
+                   y = cumret_adjusted_prices,
+                   color = ticker)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent) +
+  theme_light()
+
+pq10
+
+```

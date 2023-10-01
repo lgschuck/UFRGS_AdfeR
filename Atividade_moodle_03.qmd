@@ -1,0 +1,793 @@
+---
+title: "Atividade Moodle 3"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup}
+knitr::opts_chunk$set(error = T)
+```
+
+## Carregar Pacotes
+
+```{r}
+library(tidyverse)
+library(yfR)
+library(afedR3)
+```
+
+## Questão 1
+
+```{r}
+x <- -100:100
+my_df <- tibble(x = x,
+                y = x + 5)
+
+my_df |> 
+  filter(x > 10  & x < 18) |> 
+  nrow()
+
+```
+
+## Questão 2
+
+```{r}
+my_df <- my_df |> 
+  mutate(cumsum_x = cumsum(x)) 
+
+my_df |> 
+  filter(cumsum_x > 800) |> 
+  nrow()
+
+```
+
+## Questão 3
+
+```{r}
+
+my_df |> 
+  filter(y > -5) |> 
+  nrow()
+```
+
+## Questão 4
+
+::: callout-important
+Sem resposta exata :::
+:::
+
+```{r}
+
+tickers <- "META" 
+first_date <- '2015-01-01'
+last_date <- '2017-08-22'
+
+df_meta <- yf_get(tickers = tickers,
+                  first_date = first_date,
+                  last_date = last_date)
+
+df_meta |> 
+  filter(ref_date == max(ref_date)) |> 
+  pull(cumret_adjusted_prices) * 4500
+```
+
+## Questão 5
+
+```{r}
+
+afedR3::data_list()
+arquivo <- data_path('CH11_grunfeld.csv')
+
+df_grunfeld <- read_csv(arquivo)
+glimpse(df_grunfeld)
+
+```
+
+## Questão 6
+
+```{r}
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
+
+df_b3_ecor <- df_b3 |> 
+  filter(ticker == 'ECOR3.SA')
+
+max(df_b3_ecor$price_adjusted)
+
+```
+
+## Questão 7
+
+::: callout-important
+Sem resposta exata
+:::
+
+```{r}
+
+df_b3_azul <- df_b3 |> 
+  filter(ticker == 'AZUL4.SA')
+  
+ref_min <- min(df_b3_azul$ref_date)
+ref_max <- max(df_b3_azul$ref_date)
+
+df_b3_azul |> 
+  filter(ref_date > ref_min & ref_date < ref_max) |> 
+  nrow()
+
+```
+
+## Questão 8
+
+```{r}
+df_b3_ggbr <- df_b3 |> 
+  filter(ticker == 'GGBR4.SA')
+
+df_b3_ggbr <- df_b3_ggbr |> 
+  mutate(dif = abs(price_adjusted - 16))
+
+df_b3_ggbr |> 
+  filter(dif == min(dif))
+
+```
+
+## Questão 9
+
+```{r}
+tickers <- unique(df_b3$ticker)
+
+str_detect(tickers, 'N') |> 
+  table()
+
+```
+
+## Questão 10
+
+```{r}
+my.seed <- 96
+set.seed(my.seed)
+my.nrow <- 100
+my.mat <- matrix(runif(my.nrow*10), nrow = my.nrow )
+
+x <- rowSums(my.mat)
+which.max(x)
+
+```
+
+## Questão 11
+
+```{r}
+my.seed <- 28
+set.seed(my.seed)
+N <- 10000
+my.x <- runif(N)*sample(c(-0.5, 1), size = N, replace = TRUE)
+
+my.x_sum <- cumsum(my.x)
+which(my.x_sum > 16)[1]
+
+```
+
+## Questão 12
+
+```{r}
+arquivo <- data_path('EX_ibovespa.rds')
+
+df_ibov <- readRDS(arquivo)
+
+df_ibov <- df_ibov |> 
+  mutate(dia_semana = weekdays(ref_date))
+
+df_ibov |> 
+  group_by(dia_semana) |> 
+  summarise(media = mean(volume, na.rm = T)) |> 
+  arrange(media)
+
+```
+
+## Questão 13
+
+```{r}
+dia_ordenado <- df_ibov |> 
+  group_by(dia_semana) |> 
+  summarise(media = mean(volume, na.rm = T)) |> 
+  arrange(-media) |> 
+  pull(dia_semana)
+
+volume_menor <- df_ibov |> 
+  filter(dia_semana == dia_ordenado[1]) |> 
+  pull(volume)
+  
+volume_maior <- df_ibov |> 
+  filter(dia_semana == dia_ordenado[5]) |> 
+  pull(volume)
+
+t.test(volume_maior, volume_menor, paired = F)
+
+```
+
+## Questão 14
+
+```{r}
+arquivo <- data_path('EX_football-br.csv')
+
+df_foot <- read_csv(arquivo)
+
+df_foot <- df_foot |> 
+  mutate(resultado = case_when(GolsBR > GolsAdv ~ 'V',
+                               GolsAdv > GolsBR ~ 'D',
+                               GolsAdv == GolsBR ~ 'E',
+                               .default = NA))
+
+df_foot |>
+  filter(resultado == 'D') |> 
+  group_by(Adversario) |> 
+  count() |> 
+  arrange(-n)
+
+```
+
+## Questão 15
+
+```{r}
+
+maior_derrotado <- df_foot |>
+  filter(resultado == 'V') |> 
+  group_by(Adversario) |> 
+  count() |> 
+  arrange(-n) |> 
+  head(1) |> 
+  pull(Adversario)
+
+maior_derrotado
+
+df_foot |> 
+  filter(Adversario == maior_derrotado) |> 
+  filter(Data == max(Data))
+
+```
+
+## Questão 16
+
+```{r}
+arquivo <- data_path('EX_football-br.csv')
+
+df_foot <- read_csv(arquivo)
+
+arquivo2 <- data_path('EX_ibovespa.rds')
+
+df_ibov <- readRDS(arquivo2)
+
+# pegar datas de jogos
+datas_jogos <- df_foot |> 
+  select(Data) |> 
+  rename(ref_date = Data)
+
+# eliminar datas ja presentes no ibov
+datas_ibov <- df_ibov |> 
+  select(ref_date) |> 
+  pull(ref_date)
+
+datas_jogos <- datas_jogos |> 
+  filter(!ref_date %in% datas_ibov)
+
+# cria ibov com datas de jogos
+df_ibov_ajustado <- bind_rows(df_ibov, datas_jogos)
+
+# copiar data anteiror para datas de jogos
+df_ibov_ajustado <- df_ibov_ajustado |> 
+  arrange(ref_date) |> 
+  mutate(ret_adjusted_prices = if_else(is.na(ticker), 
+                                             lag(ret_adjusted_prices),
+                                             ret_adjusted_prices))
+
+df_ibov_ajustado <- df_ibov_ajustado |> 
+  arrange(ref_date) |> 
+  mutate(data_posterior = lead(ref_date),
+         retorno_posterior = lead(ret_adjusted_prices),
+         data_anterior = lag(ref_date),
+         retorno_anterior = lag(ret_adjusted_prices)) |> 
+  select(ref_date, data_posterior, retorno_posterior,
+         data_anterior, retorno_anterior) |> 
+  rename(Data = ref_date)
+
+df_resultado <- left_join(df_foot, df_ibov_ajustado,
+                          by = 'Data')
+  
+df_resultado <- df_resultado |> 
+  mutate(dif_gols = GolsBR - GolsAdv)
+
+df_resultado |> 
+  filter(retorno_posterior > 0) |> 
+  nrow()
+
+```
+
+## Questão 17
+
+```{r}
+df_resultado |> 
+  filter(retorno_anterior > 0) |> 
+  nrow()
+```
+
+## Questão 18
+
+```{r}
+retornos_positivos_vitorias <- df_resultado |> 
+  filter(dif_gols > 0) |> 
+  filter(retorno_posterior > 0) |>
+  nrow()
+
+retornos_positivos_geral <- df_resultado |> 
+  filter(dif_gols > 0) |> 
+  nrow()
+
+
+retornos_positivos_vitorias / retornos_positivos_geral * 100
+
+```
+
+## Questão 19
+
+```{r}
+arquivo <- data_path('EX_SP500-stocks-yearly.rds')
+
+df_sp500 <- readRDS(arquivo)
+
+resumo <- df_sp500 |> 
+  group_by(ticker) |> 
+  summarise(retorno_medio = mean(ret_adjusted_prices, na.rm = T),
+            desvio = sd(ret_adjusted_prices))
+
+resumo |> 
+  arrange(desvio) |> 
+  head(1)
+
+resumo |> 
+  arrange(-desvio) |> 
+  head(1)
+
+```
+
+## Questão 20
+
+```{r}
+
+arquivo <- data_path('EX_SP500-stocks-yearly.rds')
+
+df_sp500 <- readRDS(arquivo)
+
+df_sp500 |> 
+  mutate(preco_inicial = if_else(ref_date == min(ref_date),
+                                 price_adjusted, NA),
+         preco_final = if_else(ref_date == max(ref_date),
+                               price_adjusted, NA)) |> 
+  group_by(ticker) |> 
+  summarise(preco_inicial = first(preco_inicial, na_rm = T),
+            preco_final = first(preco_final, na_rm = T)) |> 
+  mutate(retorno = preco_final/preco_inicial - 1) |> 
+  arrange(-retorno) |> 
+  head()
+
+
+```
+
+## Questão 21
+
+```{r}
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_filtrado <- df_tesouro |> 
+  filter(asset.code %in% c('NTN-B Principal 150826',
+                           'NTN-B Principal 150545',
+                           'LTN 010120', 'LTN 010117', 'LFT 010924',
+                           'NTN-B Principal 150824'))
+length(unique(df_filtrado$ref.date))
+```
+
+## Questão 22
+
+```{r}
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_tesouro |> 
+  filter(!asset.code %in% c('LTN 010116', 'LTN 010117', 'LTN 010120',
+                           'LFT 010327', 'LTN 010724', 'LTN 010125', 
+                           'NTN-B Principal 150545', 'LTN 010123', 
+                           'NTN-B Principal 150515')) |> 
+  group_by(asset.code) |> 
+  summarise(media = mean(price.bid)) |> 
+  summarise(sum(media))
+
+```
+
+## Questão 23
+
+```{r}
+df_tesouro |> 
+  filter(ref.date > '2021-06-29') |> 
+  nrow()
+```
+
+## Questão 24
+
+```{r}
+
+df_tesouro |> 
+  filter(asset.code == 'LFT 010325') |> 
+  filter(ref.date == max(ref.date))
+
+```
+
+## Questão 25
+
+```{r}
+df_tesouro |> 
+  mutate(mat_min = min(matur.date),
+         mat_max = max(matur.date)) |> 
+  mutate(dias = mat_max - mat_min) |> 
+  pull(dias) |> 
+  head(1)
+
+
+```
+
+## Questão 26
+
+```{r}
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+menor_dist <- df_tesouro |> 
+  mutate(dist_data = abs(matur.date - as.Date('2027-09-20'))) |> 
+  filter(dist_data == min(dist_data)) |> 
+  pull(matur.date) |> 
+  head(1)
+
+maior_dist <- df_tesouro |> 
+  mutate(dist_data = abs(matur.date - as.Date('2027-09-20'))) |> 
+  filter(dist_data == max(dist_data)) |> 
+  pull(matur.date) |> 
+  head(1)
+
+maior_dist - menor_dist
+
+```
+
+## Questão 27
+
+```{r}
+
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_filtrado <- df_tesouro |> 
+  filter(asset.code %in% c('LFT 010325', 'NTN-B Principal 150824',
+                            'LFT 010327', 'LTN 010125', 'LTN 010121',
+                            'LFT 070315', 'LFT 010323', 'LTN 010120',
+                            'LFT 070317', 'LTN 010117'))
+
+resumo <- df_filtrado |> 
+  group_by(asset.code) |> 
+  mutate(preco_minimo = min(price.bid),
+         preco_maximo = max(price.bid)) |> 
+  summarise(preco_minimo = first(preco_minimo, na_rm = T),
+            preco_maximo = first(preco_maximo, na_rm = T)) |> 
+  mutate(volatilidade = preco_maximo - preco_minimo)
+
+resumo |> 
+  pull(volatilidade) |> 
+  sum()
+```
+
+## Questão 28
+
+```{r}
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_filtrado <- df_tesouro |> 
+  filter(asset.code %in% c('LTN 010118', 'LTN 010129', 'LTN 010119', 
+                           'LTN 010117', 'NTN-B Principal 150826', 
+                           'LFT 010325','LTN 010724', 'LFT 010327', 
+                           'NTN-B Principal 150545',
+                           'NTN-B Principal 150515'))
+
+df_filtrado |> 
+  mutate(classe = substr(asset.code, 1, 5)) |> 
+  pull(classe) |>
+  table() |> 
+  as.data.frame() |> 
+  arrange(-Freq)
+
+```
+
+## Questão 29
+
+```{r}
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_filtrado <- df_tesouro |> 
+  filter(asset.code %in% c('LTN 010117', 'LTN 010122', 'LTN 010120',
+                           'NTN-B Principal 150545',
+                           'NTN-B Principal 150535'))
+resumo <- df_filtrado |> 
+  mutate(dia_semana = weekdays(ref.date)) |> 
+  group_by(asset.code, dia_semana) |> 
+  summarise(media_preco = mean(price.bid))
+
+resumo |> 
+  pull(media_preco) |> 
+  sum()
+
+
+```
+
+## Questão 30
+
+```{r}
+
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_filtrado <- df_tesouro |> 
+  filter(!asset.code %in% c('LTN 010120', 'LFT 010924', 'LTN 010724', 
+                            'LTN 010121', 'LFT 070315', 'LTN 010116', 
+                            'LTN 010123'))
+
+resumo <- df_filtrado |> 
+  mutate(dia_semana = weekdays(ref.date), 
+         mes_ano = month(ref.date)) |> 
+  group_by(asset.code, mes_ano, dia_semana) |> 
+  summarise(media_preco = mean(price.bid, na.rm = T))
+
+resumo |> 
+  pull(media_preco) |> 
+  sum()
+
+```
+
+## Questão 31
+
+```{r}
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_filtrado <- df_tesouro |> 
+  filter(asset.code %in% c('NTN-B Principal 150535')) |> 
+  filter(ref.date == min(ref.date) | ref.date == max(ref.date)) |> 
+  arrange(ref.date) |> 
+  mutate(retorno = (price.bid - lag(price.bid)) * 917)
+
+df_filtrado
+```
+
+## Questão 32
+
+```{r}
+arquivo <- data_path('EX_TD-data.rds')
+
+df_tesouro <- readRDS(arquivo)
+
+df_filtrado <- df_tesouro |> 
+  filter(asset.code %in% c('LFT 010325', 'LFT 010323', 
+                           'LFT 010924', 'LTN 010724')) |> 
+  group_by(asset.code) |> 
+  filter(ref.date == min(ref.date) | ref.date == max(ref.date)) |> 
+  arrange(asset.code, ref.date) |> 
+  mutate(retorno = (price.bid - lag(price.bid)) * 943)
+
+df_filtrado |> 
+  pull(retorno) |> 
+  sum(na.rm = T)
+           
+```
+
+## Questão 33
+
+```{r}
+
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
+
+df_filtrado <- df_b3 |> 
+    filter(ticker %in% c('EMBR3.SA', 'TOTS3.SA', 'GGBR4.SA', 'CSAN3.SA',
+                         'SULA11.SA', 'ENGI11.SA', 'BRFS3.SA', 'YDUQ3.SA',
+                         'CYRE3.SA', 'RAIL3.SA', 'BBDC4.SA','BRML3.SA',
+                         'USIM5.SA'))
+df_filtrado |> 
+  nrow()
+
+```
+
+## Questão 34
+
+```{r}
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
+
+df_filtrado <- df_b3 |> 
+    filter(ticker %in% c('LREN3.SA', 'BBDC3.SA', 'MRFG3.SA', 'CYRE3.SA',
+                         'QUAL3.SA', 'CSNA3.SA', 'ENBR3.SA', 'RAIL3.SA',
+                         'SANB11.SA')) |> 
+  mutate(dia_semana = weekdays(ref_date))
+
+df_filtrado |> 
+  filter(dia_semana == 'quarta-feira') |> 
+  nrow()
+
+
+```
+
+
+## Questão 35
+
+```{r}
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
+
+df_filtrado <- df_b3 |> 
+    filter(ticker %in% c('SULA11.SA', 'PRIO3.SA', 'YDUQ3.SA', 'ENBR3.SA', 
+                         'JBSS3.SA', 'CYRE3.SA', 'BBSE3.SA', 'USIM5.SA',
+                         'BRML3.SA', 'BBDC4.SA')) |> 
+  group_by(ticker) |> 
+  filter(price_adjusted == max(price_adjusted))
+
+df_filtrado$ref_date |> 
+  max()
+```
+
+## Questão 36
+
+```{r}
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
+
+df_filtrado <- df_b3 |> 
+    filter(ticker %in% c('BRFS3.SA', 'BBDC4.SA', 'TOTS3.SA', 
+                         'GGBR4.SA', 'QUAL3.SA', 'CYRE3.SA'))
+
+df_filtrado <- df_filtrado |> 
+  arrange(ticker, ref_date) |> 
+  group_by(ticker) |> 
+  mutate(retorno = price_adjusted/lag(price_adjusted) - 1)
+
+df_filtrado |> 
+  pull(retorno) |> 
+  min(na.rm = T) * 100
+
+```
+
+## Questão 37
+
+```{r}
+arquivo <- data_path('EX_ibovespa.rds')
+
+df_ibov <- readRDS(arquivo)
+
+df_ibov |> 
+  arrange(-ret_adjusted_prices) |> 
+  head(133) |> 
+  pull(ret_adjusted_prices) |> 
+  sum()
+
+
+```
+
+## Questão 38
+
+```{r}
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
+
+arquivo2 <- data_path('EX_ibovespa.rds')
+
+df_ibov <- readRDS(arquivo2)
+
+df_filtrado <- df_b3 |> 
+    filter(!ticker %in% c('ENGI11.SA', 'AZUL4.SA', 'RAIL3.SA', 'SULA11.SA', 
+                          'PRIO3.SA', 'BBDC4.SA', 'TOTS3.SA', 'ECOR3.SA', 
+                          'BRML3.SA', 'CSAN3.SA', 'EMBR3.SA'))
+
+df_ibov_filtrado <- df_ibov |> 
+  select(ref_date, ret_adjusted_prices) |> 
+  rename(ret_ibov = ret_adjusted_prices)
+
+df_filtrado <- df_filtrado |> 
+  arrange(ticker, ref_date) |> 
+  group_by(ticker) |> 
+  mutate(retorno = price_adjusted/lag(price_adjusted) - 1)
+
+df_filtrado2 <- left_join(df_filtrado, df_ibov_filtrado, 
+               by = "ref_date")
+
+df_filtrado2 <- df_filtrado2 |> 
+  mutate(retorno_excessivo = ret_adjusted_prices - ret_ibov)
+
+df_filtrado2 |> 
+  pull(retorno_excessivo) |> 
+  sum(na.rm = T)
+
+```
+
+## Questão 39
+
+```{r}
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_stocks <- readRDS(arquivo)
+
+acoes <- c('AZUL4.SA', 'BBDC3.SA', 'BBDC4.SA', 'BBSE3.SA',
+           'BRFS3.SA', 'BRML3.SA', 'CSAN3.SA', 'CSNA3.SA', 
+           'CYRE3.SA', 'ECOR3.SA', 'EMBR3.SA', 'ENBR3.SA',
+           'ENGI11.SA', 'GGBR4.SA', 'JBSS3.SA', 'LREN3.SA',
+           'MRFG3.SA', 'QUAL3.SA', 'RADL3.SA', 'RAIL3.SA',
+           'SANB11.SA', 'SULA11.SA', 'TOTS3.SA', 'USIM5.SA',
+           'YDUQ3.SA')
+
+qtde <- c(42, 31, 46, 32, 46, 35, 45, 39, 12, 34,
+          12, 45, 11, 14, 40, 49, 29, 12, 13, 10,
+          13, 42, 12, 10, 41)
+
+data_compra <- c('2019-06-13', '2019-10-09', '2019-09-23',
+                 '2018-09-28', '2018-07-24', '2018-04-17',
+                 '2018-01-03', '2019-10-25', '2019-07-04',
+                 '2018-10-25', '2020-03-27', '2018-08-07',
+                 '2020-03-11', '2017-12-22', '2019-09-27',
+                 '2018-06-27', '2018-09-27', '2019-04-04',
+                 '2018-09-19', '2018-11-28', '2018-09-21',
+                 '2019-09-16', '2020-03-17', '2018-08-23',
+                 '2018-01-18')
+
+data_venda <- c('2021-07-14', '2022-04-26', '2022-07-29',
+                '2021-09-24', '2020-09-09', '2022-01-11',
+                '2022-03-08', '2020-10-22', '2022-05-31',
+                '2022-01-31', '2021-06-04', '2020-09-23',
+                '2022-06-15', '2020-09-10', '2020-08-04',
+                '2021-07-08', '2020-05-06', '2022-02-02',
+                '2022-02-10', '2021-02-02', '2020-06-24',
+                '2020-08-27', '2021-07-05', '2022-08-11',
+                '2021-07-26')
+
+retornos <- c()
+for(i in 1:length(acoes)){
+  
+  preco_compra <- df_stocks |> 
+    filter(ticker == acoes[i]) |> 
+    filter(ref_date == data_compra[i]) |> 
+    pull(price_adjusted)
+  
+  preco_venda <- df_stocks |> 
+    filter(ticker == acoes[i]) |> 
+    filter(ref_date == data_venda[i]) |> 
+    pull(price_adjusted)
+  
+  
+  retorno_acao <- (preco_venda - preco_compra) * qtde[i]
+  
+  retornos <- append(retornos, retorno_acao)
+
+}
+
+sum(retornos)
+```

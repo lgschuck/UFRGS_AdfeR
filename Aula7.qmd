@@ -1,0 +1,52 @@
+---
+title: "Aula 7"
+format: 
+  html:
+    embed-resources: true
+---
+
+```{r setup}
+knitr::opts_chunk$set(error = T)
+```
+
+# Carregar Pacotes
+
+```{r}
+library(tidyverse)
+library(yfR)
+```
+
+## Busca Dados
+
+```{r}
+tickers <- c('^BVSP', '^FTSE', '^GSPC')
+
+df_yf <- yf_get(tickers, '2015-01-01')
+
+```
+
+## Gráfico
+
+```{r}
+ano_inicial <- format(min(df_yf$ref_date), '%Y')
+p <- ggplot(df_yf, 
+            aes(x = ref_date, y = cumret_adjusted_prices,
+                color = ticker)) +
+  geom_line() +
+  labs(title = 'Valor acumulado de Índices de Ações',
+       subtitle = paste('Dados desde', ano_inicial),
+       x = 'Data', 
+       y = 'Investimento Acumulado',
+       caption = paste('Dados do YF, retirados em:', 
+                       format(Sys.time(), '%d/%m/%Y'))) +
+  theme_light()
+
+x11()
+print(p)
+
+ggsave(filename = 'imagens/grafico_1.png',
+       plot = p, 
+       width = 10,
+       height = 10)
+```
+
