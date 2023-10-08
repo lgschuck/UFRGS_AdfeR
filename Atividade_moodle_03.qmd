@@ -108,6 +108,9 @@ Sem resposta exata
 :::
 
 ```{r}
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
 
 df_b3_azul <- df_b3 |> 
   filter(ticker == 'AZUL4.SA')
@@ -116,7 +119,7 @@ ref_min <- min(df_b3_azul$ref_date)
 ref_max <- max(df_b3_azul$ref_date)
 
 df_b3_azul |> 
-  filter(ref_date > ref_min & ref_date < ref_max) |> 
+  filter(ref_date >= ref_min & ref_date <= ref_max) |> 
   nrow()
 
 ```
