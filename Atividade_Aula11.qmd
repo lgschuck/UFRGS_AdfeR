@@ -1,0 +1,236 @@
+---
+title: "Atividade - Aula 11 - 24 11 23"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r}
+library(yfR)
+library(tidyverse)
+library(forecast)
+library(fGarch)
+library(MTS)
+```
+
+# Exercício 1
+
+Using package yfR (M. Perlin 2023), download data for the SP500 (ticker
+\^GSPC) between 2015 and today. Estimate a ARIMA (1, 0, 0) for the
+adjusted returns. What is the value of the autoregressive parameter?
+
+```{r}
+
+df_gspc <- yf_get('^GSPC', 
+               first_date = '2015-01-01',
+               last_date = '2023-11-24',
+               be_quiet = T)
+
+modelo1 <- stats::arima(df_gspc$ret_adjusted_prices,
+                        order = c(1, 0, 0))
+
+modelo1
+```
+
+**Resposta:** Valor do parâmetro autoregressivo: -0.1462
+
+# Exercício 2
+
+Using same package, download data for the FTSE between 2010 and today.
+However, download data for daily, monthly and yeary observations.
+Estimate a ARIMA(1, 0, 1) for each of the time series of returns. Can
+you find any difference in the estimated coefficients?
+
+```{r}
+df_ftse_daily <- yf_get('^FTSE', 
+               first_date = '2015-01-01',
+               last_date = '2023-11-24',
+               be_quiet = T, freq_data = 'daily')
+
+df_ftse_monthly <- yf_get('^FTSE', 
+               first_date = '2015-01-01',
+               last_date = '2023-11-24',
+               be_quiet = T, freq_data = 'monthly')
+
+df_ftse_yearly <- yf_get('^FTSE', 
+               first_date = '2015-01-01',
+               last_date = '2023-11-24',
+               be_quiet = T, freq_data = 'yearly')
+
+modelo_daily <- stats::arima(df_ftse_daily$ret_adjusted_prices,
+                        order = c(1, 0, 1))
+
+modelo_monthly <- stats::arima(df_ftse_monthly$ret_adjusted_prices,
+                        order = c(1, 0, 1))
+  
+modelo_yearly <-   stats::arima(df_ftse_yearly$ret_adjusted_prices,
+                        order = c(1, 0, 1))
+
+
+modelo_daily
+modelo_monthly
+modelo_yearly
+```
+
+**Resposta:**
+
+Em geral os coeficientes são bem diferentes, entre monthly e yearly o
+AR(1) ficou em magnitude semelhante, mas com sinal invertido, enquanto
+que no coeficiente MA(1) os valores possuem mesmo sinal mas valores de
+uma razão próximo a 2x.
+
+Para dados diários houve aviso de NAs. Não sei o motivo.
+
+# Exercício 3
+
+Using same data from exercise 1, use function forecast::auto.arima() to
+estimate a ARIMA model with automatic selection of lags. What is the
+chosem model?
+
+```{r}
+autoarima_gspc <- forecast::auto.arima(
+  x = df_gspc$ret_adjusted_prices)
+
+autoarima_gspc
+
+```
+
+**Resposta:** Modelo selecionado no auto.arima foi ARIMA(5,0,2).
+
+# Exercício 4
+
+Using package fGarch (Wuertz et al. 2023), simulate 10000 observations
+of a GARCH(1,1) model with the following specification:
+
+yt=0.015−0.15yt−1+ϵt
+
+ϵt ∼N(0,ht)
+
+ht =0.001+0.1ϵ2t−1+0.85ht−1
+
+```{r}
+# parametros a serem usados
+parametros_garch = list(
+  omega = 0.001,
+  alpha = 0.1,
+  beta = 0.85,
+  mu = 0.015,
+  ar = -0.15
+)
+
+# criar especificacao do modelo
+modelo_garch_simulado <- fGarch::garchSpec(
+  model = parametros_garch)
+
+# seed par amanter reprodutibilidade
+set.seed(1234)
+
+n_sim <- 10000
+sim_garch = fGarch::garchSim(modelo_garch_simulado, n = n_sim)
+
+df_garch_sim <- tibble(
+    sim.ret = sim_garch$garch,
+    idx=seq_along(sim_garch$garch))
+
+ggplot(df_garch_sim, aes(x=idx, y=sim.ret)) +
+  geom_line()
+
+```
+
+# Exercício 5
+
+Using the simulated data from previous exercise, estimate a GARCH(1, 1)
+model with fGarch::garchFit(). Do the estimated coefficients match the
+ones from the simulation?
+
+```{r}
+
+modelo_garch_estimado <- fGarch::garchFit(
+  data = sim_garch, 
+  formula = ~ arma(1,0) + garch(1,1), 
+  trace = FALSE
+)
+
+print(modelo_garch_estimado)
+```
+
+**Resposta:**
+
+Comparando os parâmetros:
+
+| Definido | Modelado | Modelado |
+|----------|----------|----------|
+| mu       | 0,015    | 0,0150   |
+| ar       | -0,15    | -0,1505  |
+| omega    | 0,01     | 0,001    |
+| alpha1   | 0,1      | 0,0952   |
+| beta1    | 0,85     | 0,8493   |
+
+O modelo estimou valores muito próximos dado que o tamanho da amostra
+usada foi de 10.000 observações. Quanto mais observações melhor a
+estimativa do modelo.
+
+# Exercício 6
+
+Using package yfR, download data for the IBOVESPA index (ticker \^BVSP)
+between 2015 and today. Test the existence of arch effects in 1) prices
+series and 2) in the returns series. Report an discuss both results.
+
+```{r}
+df_ibov <- yf_get('^BVSP', 
+               first_date = '2015-01-01',
+               last_date = '2023-11-24',
+               be_quiet = T)
+
+df_ibov <- df_ibov |> 
+  na.omit()
+```
+
+## Test the existence of arch effects in 1) prices series
+
+```{r}
+
+plot(df_ibov$price_adjusted)
+
+MTS::archTest(
+  rt = df_ibov$price_adjusted
+)
+
+```
+
+## Test the existence of arch effects in 2) in the returns series
+
+```{r}
+
+plot(df_ibov$ret_adjusted_prices)
+
+MTS::archTest(
+  rt = df_ibov$ret_adjusted_prices
+)
+
+```
+
+**Resposta:** Ambos testes retornam valores da estatística de teste altos e, portanto, p valores baixos. Em ambos os casos existe a volatilidade na variância e assim são processos que podem ser modelos por ARCH.
+
+# Exercício 7
+
+For the same data used in 4, estimate a GARCH(1, 1) for the adjusted
+returns. Report the model and its coefficients in the screen of R.
+
+** Imagino que aqui seria mesmos dados do exercício 6 (dados IBOVESPA).
+
+```{r}
+
+df_ibov_ts <- fBasics::as.timeSeries(df_ibov)
+
+modelo_garch_estimado_ibov <- fGarch::garchFit(
+  data = df_ibov_ts , 
+  formula = ret_adjusted_prices ~ arma(1,0) + garch(1,1), 
+  trace = FALSE)
+
+print(modelo_garch_estimado_ibov)
+
+```

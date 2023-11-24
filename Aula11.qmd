@@ -189,5 +189,3 @@ print(my_forecast)
 
 ```
 
-
-
