@@ -1,0 +1,193 @@
+---
+title: "Aula 11 - 24 11 23"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+# Simular ARIMA
+
+```{r}
+
+library(ggplot2)
+
+set.seed(1)
+
+# set number of observations
+n_T <- 5000
+
+# set model's parameters
+arima_param <- list(ar = 0.5, 
+                    ma = -0.1)
+my_sd <- 1
+
+# simulate model
+my_ts <- stats::arima.sim(
+  n = n_T, 
+  model = arima_param, 
+  sd = my_sd
+)
+
+# set df
+temp_df <- dplyr::tibble(
+  y = unclass(my_ts), 
+  date = Sys.Date() + 1:n_T
+)
+
+p <- ggplot(temp_df, aes(x = date, y = y)) + 
+  geom_line(linewidth = 0.5)
+
+print(p)     
+
+```
+
+## Estimar Modelo
+
+```{r}
+
+my_arima <- stats::arima(
+  my_ts, 
+  order = c(1,0,1))
+
+my_arima
+```
+
+## Exemplo SP 500
+
+```{r}
+library(tseries)
+
+df_SP500 <- yfR::yf_get(
+  "^GSPC", 
+  "2015-01-01") |>
+  na.omit()
+
+tseries::adf.test(df_SP500$ret_adjusted_prices)
+
+plot(df_SP500$ret_adjusted_prices)
+
+tseries::adf.test(df_SP500$price_adjusted)
+
+plot(df_SP500$price_adjusted)
+
+```
+
+## Auto ARIMA
+
+```{r}
+library(forecast)
+my_autoarima <- forecast::auto.arima(
+  x = df_SP500$ret_adjusted_prices,
+  max.p = 10, max.P = 1, ic = 'bic')
+
+my_autoarima
+
+my_autoarima2 <- forecast::auto.arima(
+  x = df_SP500$price_adjusted)
+
+my_autoarima2
+```
+
+## Previsão
+
+```{r}
+forecast::forecast(my_autoarima, h = 5)
+```
+
+# GARCH
+
+```{r}
+library(fGarch)
+# set list with model spec
+my_sim_garch = list(
+  omega=0.001, 
+  alpha=0.15, 
+  beta=0.8, 
+  mu=0.02, 
+  ar = 0.1)
+
+# set garch spec                
+spec = fGarch::garchSpec(
+  model = my_sim_garch
+)
+
+# print it
+print(spec)
+```
+
+## Simulação
+
+```{r}
+set.seed(20)
+
+# simulate garch model
+n_T <- 1000
+sim_garch = fGarch::garchSim(spec, n = n_T)
+
+# set df for ggplot
+temp_df <- dplyr::tibble(
+  sim.ret = sim_garch$garch,
+  idx=seq_along(sim_garch$garch))
+
+p <- ggplot(temp_df, aes(x=idx, y=sim.ret)) +
+  geom_line()
+
+print(p)
+```
+
+## Estimando
+
+```{r}
+# estimate garch model
+my_garchfit <- fGarch::garchFit(
+  data = sim_garch, 
+  formula = ~ arma(1,0) + garch(1,1), 
+  trace = FALSE
+)
+
+print(my_garchfit)
+```
+
+## Exemplo SP 500
+
+```{r}
+library(MTS)
+# test for Arch effects
+MTS::archTest(
+  rt = df_SP500$ret_adjusted_prices
+)
+```
+
+
+```{r}
+# set object for estimation
+df_est <- fBasics::as.timeSeries(df_SP500)
+
+# estimate garch model for SP500
+my_garchfit_sp500 <- fGarch::garchFit(
+  data = df_est , 
+  formula = ret_adjusted_prices ~ arma(1,0) + garch(1,1), 
+  trace = FALSE)
+
+print(my_garchfit_sp500)
+
+```
+
+## Previsão
+
+```{r}
+
+# static forecast for garch
+my_forecast <- fGarch::predict(
+  my_garchfit_sp500, n.ahead = 3)
+
+# print df
+print(my_forecast)
+
+```
+
+
+

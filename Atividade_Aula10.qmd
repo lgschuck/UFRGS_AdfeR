@@ -1,0 +1,181 @@
+---
+title: "Atividade - Aula 10 - 17 11 23"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+# Exercise 1 - Linear Model
+
+### 1 - Using package BatchGetSymbols, download adjusted price data for \^BVSP and GRND3.SA from 2015 to 2023.
+
+```{r}
+library(yfR)
+library(tidyverse)
+
+ibov <- yf_get('^BVSP', 
+               first_date = '2015-01-01',
+               last_date = '2023-11-16',
+               be_quiet = T)
+
+ibov <-  ibov |> 
+  select(ref_date, ret_adjusted_prices) |> 
+  rename(ret_adjusted_ibov = ret_adjusted_prices)
+
+grnd3 <- yf_get('GRND3.SA', 
+                first_date = '2015-01-01',
+                last_date = '2023-11-16',
+                be_quiet = T)
+
+grnd3 <- grnd3 |> 
+  select(ref_date, ret_adjusted_prices) |> 
+  rename(ret_adjusted_grnd3 = ret_adjusted_prices)
+
+base_modelo <- left_join(grnd3, ibov, by = "ref_date")
+
+base_modelo$ret_adjusted_ibov |> summary()
+
+base_modelo <- base_modelo |> 
+  filter(!is.na(ret_adjusted_ibov))
+
+base_modelo$ret_adjusted_grnd3 |> summary()
+```
+
+### 2 - Estimate the beta of GRND3 from the following model:
+
+Rt = α + βRM,t + ϵt
+
+```{r}
+
+modelo1 <- lm(ret_adjusted_grnd3 ~
+                ret_adjusted_ibov,
+              data = base_modelo)
+
+summary(modelo1)
+```
+
+### 3 - Estimate a new market model with a dummy for negative returns:
+
+Rt = α + β1RM,t + β2DtRM,t + ϵt
+
+Where Dt=1 if RM,t\<0 and DT=0 otherwise
+
+```{r}
+base_modelo <- base_modelo |> 
+  mutate(Dnr = if_else(ret_adjusted_ibov < 0, 1, 0))
+
+modelo2 <- lm(ret_adjusted_grnd3 ~
+                ret_adjusted_ibov + Dnr,
+              data = base_modelo)
+
+summary(modelo2)
+```
+
+#### 4 - With the first model (without dummies), use package car to test the hipothesis that α=0 and β=1
+
+```{r}
+library(car)
+
+intercept <- 0
+beta <- 1
+
+test_matrix <- matrix(c(modelo1$coefficients[1],  
+                        modelo1$coefficients[2]))  
+
+# hypothesis matrix 
+hyp_mat <- matrix(c(1,0,
+                    0,1),nrow = 2)
+
+# do test
+my_waldtest <- linearHypothesis(
+  modelo1,
+  hypothesis.matrix = hyp_mat, 
+  rhs = test_matrix)
+
+# print result
+print(my_waldtest)
+```
+
+### 5 - Test the underlying assumptions of the previous linear model with package gvlma
+
+```{r}
+library(gvlma)
+
+gvmodelo1 <- gvlma(modelo1) 
+
+summary(gvmodelo1)
+```
+
+# Exercise 2 - Linear Models
+
+### 1 - Using package BatchGetSymbols, download adjusted price data for PETR3, PETR4, GGBR3, GGBR4 from 2010 to 2018.
+
+```{r}
+acoes <- c('PETR3.SA', 'PETR4.SA', 'GGBR3.SA', 'GGBR4.SA')
+
+df <- yf_get(acoes,
+             first_date = '2010-01-01',
+             last_date = '2018-12-31', 
+             be_quiet = T)
+
+ibov <- yf_get('^BVSP', 
+               first_date = '2010-01-01',
+               last_date = '2018-12-31', 
+               be_quiet = T)
+
+ibov <-  ibov |> 
+  select(ref_date, ret_adjusted_prices) |> 
+  rename(ret_adjusted_ibov = ret_adjusted_prices)
+
+base_modelo2 <- left_join(df, ibov, by = "ref_date")
+
+base_modelo2$ret_adjusted_ibov |> summary()
+
+base_modelo2 <- base_modelo2 |> 
+  filter(!is.na(ret_adjusted_ibov))
+
+base_modelo2$ret_adjusted_prices |> summary()
+```
+
+### 2 - Using loops, estimate and save the beta of all stocks in a dataframe with two columns (ticker, beta):
+
+Rt = α + βRM,t + ϵt
+
+```{r}
+
+betas <- data.frame(ticker = character(0),
+                    beta = numeric(0))
+
+resultado_modelos <- list()
+
+for (acao_atual in acoes){
+  
+  base_atual <- base_modelo2 |> 
+    filter(ticker == acao_atual)
+  
+  modelo_atual <- lm(ret_adjusted_prices ~
+                       ret_adjusted_ibov,
+                     data = base_atual)
+  
+  resultado_modelos[[length(resultado_modelos)+1]] <-  modelo_atual
+  
+  betas <- bind_rows(
+    betas, 
+    data.frame(ticker = acao_atual,
+               beta = modelo_atual$coefficients[2]))
+}
+
+rownames(betas) <- NULL
+betas
+```
+
+### 3 - Report the results of all models with texreg::screenreg in a single table
+
+```{r}
+library(texreg)
+
+texreg::screenreg(l = resultado_modelos)
+```

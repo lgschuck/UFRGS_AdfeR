@@ -1,0 +1,59 @@
+---
+title: "Aula 10 - 17 11 23"
+format: 
+  html:
+    embed-resources: true
+---
+
+```{r}
+
+set.seed(50)
+
+# number of obs
+nT <- 1000
+
+# set x as Normal (0, 1)
+x <- runif(nT)
+
+# set coefficients
+my_alpha <- 0.5
+my_beta <- 1
+
+# build y
+y <- my_alpha + my_beta*x + rnorm(nT, sd = 0.1)
+
+library(ggplot2)
+
+# set temp df
+temp.df <- dplyr::tibble(x, y)
+
+# plot it
+p <- ggplot(temp.df, aes(x = x, y = y)) + 
+  geom_point(size=0.5)
+
+print(p)
+
+```
+
+## Estimar Modelo
+
+```{r}
+
+my_lm <- lm(y ~ x, data = temp.df)
+
+summary(my_lm)
+
+my_lm$call |> class()
+
+sum(my_lm$residuals)
+
+```
+
+## Reportar mOdelo
+```{r}
+library(texreg)
+
+screenreg(my_lm)
+
+```
+

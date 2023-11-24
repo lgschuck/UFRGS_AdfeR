@@ -1,0 +1,252 @@
+---
+title: "Exercicio-Aula-09-Simulação_1.R"
+format: 
+  html:
+    embed-resources: true
+---
+
+```{r}
+library(tidyverse)
+```
+
+## Exercise 1 - Creating a Random Walk
+
+```{r}
+
+set.seed(1)
+
+C <- 0.000
+my_sd = 0.015
+my_var <- my_sd^2
+nT <- 100
+
+R <- numeric(nT)
+P <- numeric(nT)
+P[1] <- 100
+
+for (t in seq(2, nT)) {
+  # cli::cli_alert_info("simulating price {t}")
+  R[t] <- C + rnorm(1, 0, my_sd)
+  P[t] <- P[t-1]*exp(R[t])
+  
+}
+
+plot(P)
+
+```
+
+## Exercise 2 - Creating a Random Walk
+
+Várias simulações.
+
+```{r}
+
+## Exercise 02
+create_rnd_walk <- function(
+    i_sim,
+    nT, C, P_0, my_sd
+    ) {
+  
+  R <- numeric(nT)
+  P <- numeric(nT)
+  P[1] <- P_0
+  
+  for (t in seq(2, nT)) {
+    # cli::cli_alert_info("simulation {i_sim}, price {t}")
+    R[t] <- C + rnorm(1, 0, my_sd)
+    P[t] <- P[t-1]*exp(R[t])
+    
+  }
+  
+  df_out <- tibble::tibble(
+    i_sim = i_sim,
+    t = 1:nT,
+    P = P
+  )
+  
+  return(df_out)
+}
+
+C <- 0.000
+my_sd = 0.015
+my_var <- my_sd^2
+nT <- 100
+P_0 <- 100
+
+df <- create_rnd_walk(1, nT,
+                      C, P_0, my_sd)
+
+n_sim <- 1000
+
+df_sim <- purrr::map_df(
+  1:n_sim,
+  create_rnd_walk,
+  nT = nT,
+  C = C,
+  P_0 = P_0,
+  my_sd = my_sd
+)
+
+```
+
+```{r}
+ggplot(df_sim, aes(t, P, group = i_sim, colour = i_sim)) + 
+  geom_line()
+
+df_sim |> 
+  filter(t == 100) |> 
+  ggplot(aes(P)) + 
+    geom_histogram()
+
+```
+
+## Exercise 3 - Pricing a Call option
+
+Calculate the price of the call option with maturity in 100 periods, strike price equal to 110, yield rate equal to 5% for the whole time period. Use set.seed(10) and 1000 simulations (sd = 0.015)
+
+
+$$
+Payoff{call} = max(0, Pt - K)
+$$
+
+Solução professor: 2.421
+
+```{r}
+create_call_price <- function(
+    i_sim,
+    nT, K, P_0, my_sd, 
+    C
+    ) {
+  
+  R <- numeric(nT)
+  P <- numeric(nT)
+  P[1] <- P_0
+  
+  for (t in seq(2, nT)) {
+    
+    R[t] <- C + rnorm(1, 0, my_sd)
+    P[t] <- P[t-1]*exp(R[t])
+    
+  }
+  
+  Payoff <- max(0 , (P[100] - K))
+  
+  df_out <- tibble::tibble(
+    i_sim = i_sim,
+    t = 1:nT,
+    P = P,
+    Payoff = Payoff
+  )
+  
+  return(df_out)
+}
+
+
+set.seed(10)
+
+df_sim_call <- purrr::map_df(
+  1:1000,
+  create_call_price,
+  nT = 100, 
+  K = 110, 
+  P_0 = 100,
+  my_sd = 0.015,
+  C = 0)
+
+y_rate <- 0.05
+
+media_payoff <- df_sim_call |> pull(Payoff) |> mean()  
+  
+Preco <- media_payoff / (1 + y_rate)
+
+Preco
+```
+
+Price an European **put option** that matures in 100 periods, strike price equal to 90, with 1000 simulations and set.seed(15)
+
+
+$$
+Payoff{put} = max(0, K - Pt)
+$$
+
+Solução professor: 1.905
+
+```{r}
+create_put_price <- function(
+    i_sim,
+    nT, K, P_0, my_sd, 
+    C
+    ) {
+  
+  R <- numeric(nT)
+  P <- numeric(nT)
+  P[1] <- P_0
+  
+  for (t in seq(2, nT)) {
+    
+    R[t] <- C + rnorm(1, 0, my_sd)
+    P[t] <- P[t-1]*exp(R[t])
+    
+  }
+  
+  Payoff <- max(0 , (K - P[100]))
+  
+  df_out <- tibble::tibble(
+    i_sim = i_sim,
+    t = 1:nT,
+    P = P,
+    Payoff = Payoff
+  )
+  
+  return(df_out)
+}
+
+set.seed(15)
+
+df_sim_put <- purrr::map_df(
+  1:1000,
+  create_put_price,
+  nT = 100, 
+  K = 90, 
+  P_0 = 100,
+  my_sd = 0.015,
+  C = 0)
+
+
+y_rate <- 0.05
+
+media_payoff <- df_sim_put |> pull(Payoff) |> mean()  
+  
+Preco <- media_payoff / (1 + y_rate)
+
+Preco
+
+```  
+
+## Exercise 4 - Simulating Ibovespa
+
+Consider the following RW model:
+
+RtϵtPt=∼=C+ϵtN(0,σ)Pt−1exp(Rt)
+
+Use package yfR to download daily data for Ibovespa (^BVSP) in the last 3 years (Sys.Date() - 365*3)
+
+Estimate parameters C and σ for the Ibovespa index as:
+
+RtCσ===log(PtPt−1)E(Rt)SD(RT)
+
+Using the parameters from the estimation, simulate the prices of Ibovespa for the next 100 days. TIP: Use the last available price as P0
+.
+
+Create a figure with ggplot2, showing all possible paths of the simulation.
+
+
+```{r}
+
+
+
+
+
+
+```
+
