@@ -1,0 +1,1080 @@
+---
+title: "Atividade Moodle 4"
+format: 
+  html:
+    embed-resources: true
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup}
+knitr::opts_chunk$set(error = T)
+```
+
+## Carregar Pacotes
+
+```{r}
+options(digits = 22)
+library(tidyverse)
+library(yfR)
+library(afedR3)
+library(car)
+library(forecast)
+library(fGarch)
+```
+
+## Questão 1
+
+Using package afedR3, consider the financial data available in file EX_SP500-stocks.rds and load it in R. Notice that the actual market index is included as ticker ^GSPC.
+
+After importing the dataset, filter out any row with NA values (you can use function complete.cases() or na.omit() for that).
+
+Using arithmetic returns from the adjusted prices, what is the value of beta for stock WY?
+
+R_t = \alpha + \beta R_{M,t} + \epsilon _t 
+
+```{r}
+arquivo <- data_path('EX_SP500-stocks.rds')
+
+df_sp500 <- readRDS(arquivo) |> 
+  na.omit()
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% c('^GSPC', 'WY')) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+lm(return_WY ~ return_GSPC, data = df_base)
+
+```
+
+## Questão 2
+
+Using the the data from file EX_SP500-stocks.rds, estimate the following model for stock V:
+
+R_t = \alpha + (\beta _1 + \beta_2 D_t) R_{M,t} + \epsilon _t 
+
+Where parameter D_t is a dummy that takes value 1 if the weekday in time t is monday and 0 otherwise. What is the value of \beta_2?
+
+```{r}
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% c('^GSPC', 'V')) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+df_base <- df_base |> 
+  mutate(dia_semana = wday(ref_date)) |> 
+  mutate(monday = if_else(dia_semana == 2, 1, 0)) |> 
+  mutate(monday = as.factor(monday))
+
+lm(return_V ~ 
+     return_GSPC + monday * return_GSPC - monday, data = df_base)
+
+```
+
+## Questão 3
+
+Based on file EX_SP500-stocks.rds, and using price and return data only for asset CMI, estimate the following lagged model:
+
+
+R_t = \alpha + \beta _1 R_{M,t-1} + \epsilon _t 
+
+What is the value of \beta_1?
+
+```{r}
+df_base <- df_sp500 |> 
+  filter(ticker %in% c('^GSPC', 'CMI')) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+df_base <- df_base |> 
+  mutate(lag_mercado = lag(return_GSPC))
+
+lm(return_CMI ~ lag_mercado, data = df_base)
+
+```
+
+## Questão 4
+
+-1 para remover intercepto do modelo
+
+Using the data from file EX_SP500-stocks.rds, estimate the following model for stock ULTA:
+
+
+R_t = \beta _1 R_{M,t} + \sum ^{5} _{i=1} \theta _i WeekDummy _{i,t} +  \epsilon _t
+
+Where WeekDummy _{i,t} is a dummy variable that takes value 1 if the day of the week is i (monday to friday). What is the estimated value of parameter \theta _1?
+
+```{r}
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% c('^GSPC', 'ULTA')) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+df_base <- df_base |> 
+  mutate(dia_semana = wday(ref_date)) |> 
+  mutate(segunda = if_else(dia_semana == 2, 1, 0),
+         terca = if_else(dia_semana == 3, 1, 0),
+         quarta = if_else(dia_semana == 4, 1, 0),
+         quinta = if_else(dia_semana == 5, 1, 0),
+         sexta = if_else(dia_semana == 6, 1, 0)) 
+
+lm(return_ULTA ~ return_GSPC + 
+     segunda + 
+     terca + 
+     quarta + 
+     quinta + 
+     sexta - 1, data = df_base)
+
+```
+
+## Questão 5
+
+Using file EX_SP500-stocks.rds, consider the estimation of the beta model for stock ULTA. Using CRAN package car, perform a linear hypothesis test for \alpha = 0 and \beta = 0.7. What is the p-value of the test?
+
+```{r}
+df_base <- df_sp500 |> 
+  filter(ticker %in% c('^GSPC', 'ULTA')) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+modelo1 <- lm(return_ULTA ~ return_GSPC, data = df_base)
+
+modelo1
+
+intercept <- 0
+beta <- 0.7
+
+test_matrix <- matrix(c(modelo1$coefficients[1],  
+                        modelo1$coefficients[2]))  
+
+# hypothesis matrix 
+hyp_mat <- matrix(c(1,0,
+                    0,1),nrow = 2)
+
+# do test
+my_waldtest <- linearHypothesis(
+  modelo1,
+  hypothesis.matrix = hyp_mat, 
+  rhs = test_matrix)
+
+# print result
+print(my_waldtest)
+
+#########
+
+lh <- linearHypothesis(modelo1, c("(Intercept) = 0", "return_GSPC   = 0.7"))
+lh
+
+lh$`Pr(>F)`
+
+```
+
+## Questão 6
+
+After loading the data from file EX_SP500-stocks.rds, estimate the following beta (market) model for stock DGX:
+
+R_t = \alpha + \beta R_{M,t} + \epsilon _t 
+
+After the estimation, perform a Durbin Watson test of serial correlation. What is the p-value of the test?
+
+```{r}
+library(lmtest)
+df_base <- df_sp500 |> 
+  filter(ticker %in% c('^GSPC', 'DGX')) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+modelo1 <- lm(return_DGX ~ return_GSPC, data = df_base)
+
+dwtest(modelo1)
+
+```
+
+## Questão 7
+
+Consider the data in file EX_SP500-stocks.rds for two stocks: DE and SBUX. Based on the return dataset, estimate the following linear model:
+
+
+R_{DE,t} = \alpha + \beta _1 R_{SBUX,t} + \epsilon _t 
+
+What is the value of \beta_1?
+
+```{r}
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% c('DE', 'SBUX')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+lm(return_DE ~ return_SBUX, data = df_base)
+
+```
+
+## Questão 8
+
+Load the data from file EX_SP500-stocks.rds and keep all rows for the following tickers: NTRS, CINF, TRGP, LEN, DGX, AFL, HES, SPG, ^GSPC, NLOK, V, D, CMI, GOOGL, ZBH, BA, TGT. Using package lmtest, perform the Durbin Watson test for the market model of each stock. How many of the 16 stocks reject the null hypothesis of serial correlation at 5%?
+
+```{r}
+
+tickers <- c('NTRS', 'CINF', 'TRGP', 'LEN', 'DGX', 'AFL', 
+             'HES', 'SPG', '^GSPC', 'NLOK', 'V', 'D', 'CMI', 
+             'GOOGL', 'ZBH', 'BA', 'TGT')
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+# ativos a modelar
+ativos <- names(df_base)[-c(1,2)]
+
+lista_modelos <- list()
+
+# gerar modelo apra cada ativo
+for (i in 1:length(ativos)){
+
+  ativo <- ativos[i]
+  
+  lista_modelos[[i]] <- lm(unlist(df_base[paste(ativo)]) ~ 
+                                df_base$return_GSPC)  
+  
+}
+
+# inserir nome na lista
+names(lista_modelos) <- ativos
+
+x <- numeric()
+# durbin watson test para todos
+for (i in 1:length(ativos)){
+
+  x <- append(x, dwtest(lista_modelos[[i]])$p.value)
+}
+
+# quantidade maior que 0.05
+x[x <=0.05] |> length()
+
+```
+
+## Questão 9
+
+Again using data from file EX_SP500-stocks.rds, filter the dataset by removing the following tickers: PEP, AFL, TGT, NKE, SO, LEN, V, FCX, WY, ULTA, HES. With the resulting dataframe, calculate the beta (market model) coefficient for all available remaining stocks. What is the average value of Beta?
+
+```{r}
+
+remover_tickers <- c('PEP', 'AFL', 'TGT', 'NKE', 'SO', 'LEN', 
+                     'V', 'FCX', 'WY', 'ULTA', 'HES')
+
+df_base <- df_sp500 |> 
+  filter(!ticker %in% remover_tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+# ativos a modelar
+ativos <- names(df_base)[-c(1,2)]
+
+beta <- numeric()
+# gerar modelo apra cada ativo
+for (i in 1:length(ativos)){
+
+  ativo <- ativos[i]
+  
+  modelo <- lm(unlist(df_base[paste(ativo)]) ~ 
+                                df_base$return_GSPC)  
+  
+  beta <- append(beta, modelo$coefficients[2])
+  
+}
+
+mean(beta)
+```
+
+## Questão 10
+
+Using the information from file EX_SP500-stocks.rds and keeping data only for tickers LEN, VRSN, FCX, SBUX, HES, PEP, DE, DGX, ORLY, TRGP, V, KEY, GOOGL, NDAQ, D, JKHY, TWTR, BA, NTRS estimate the beta model for all remaining stocks. What is the minimum value of alpha for all 19 stocks?
+
+```{r}
+
+tickers <- c('LEN', 'VRSN', 'FCX', 'SBUX', 'HES', 'PEP', 
+                     'DE', 'DGX', 'ORLY', 'TRGP', 'V', 'KEY', 'GOOGL', 
+                     'NDAQ', 'D', 'JKHY', 'TWTR', 'BA', 'NTRS', '^GSPC')
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+# ativos a modelar
+ativos <- names(df_base)[-c(1,2)]
+
+alfa <- numeric()
+# gerar modelo apra cada ativo
+for (i in 1:length(ativos)){
+
+  ativo <- ativos[i]
+  
+  modelo <- lm(unlist(df_base[paste(ativo)]) ~ 
+                                df_base$return_GSPC)  
+  
+  alfa <- append(alfa, modelo$coefficients[1])
+  
+}
+
+min(alfa)
+
+```
+
+## Questão 11
+
+Consider the following GLM model:
+
+E \left( P(R _t > 0) \right) = g \left(\alpha + \beta R_{Mkt,t}  \right)
+
+where P(R _t > 0) is the probability that the return of a particular stock is higher than 0 and g() is the probit function. Estimate this GLM model using R and, looking the result for stock HES, what is the value of \beta?
+
+```{r}
+tickers <- c('HES', '^GSPC')
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+# returno maior que 0
+df_base <- df_base |> 
+  mutate(retorno_positivo = ifelse(return_HES > 0, 1, 0))
+
+lm(return_HES ~ return_GSPC, df_base)  
+  
+glm(data = df_base, 
+              formula = retorno_positivo ~ return_GSPC , 
+              family = binomial(link = "probit"))
+
+```
+
+## Questão 12
+
+Using set.seed = 13 and function arima.sim, simulate 155 observations of the following ARMA model:
+
+y_t = 0.4 y_{t-1} + -0.09 \epsilon _{t-1} + \epsilon _{t}
+
+\epsilon _{t} \sim N(0, var = 0.25)
+
+How many observations of the simulated model are higher than 0?
+
+```{r}
+set.seed(13)
+
+# set number of observations
+n_T <- 155
+
+# set model's parameters
+arima_param <- list(ar = 0.4, 
+                    ma = -0.09)
+my_sd <- sqrt(0.25)
+
+# simulate model
+my_ts <- stats::arima.sim(
+  n = n_T, 
+  model = arima_param, 
+  sd = my_sd
+)
+
+# set df
+temp_df <- dplyr::tibble(
+  y = unclass(my_ts), 
+  date = Sys.Date() + 1:n_T
+)
+
+p <- ggplot(temp_df, aes(x = date, y = y)) + 
+  geom_line(linewidth = 0.5)
+
+p
+
+temp_df |> filter(y > 0) |> nrow()
+
+```
+
+## Questão 13
+
+Again, using set.seed = 81 and function arima.sim, simulate 384 observations of the following ARMA model:
+
+y_t = 0.4 y_{t-1} + -0.11 \epsilon _{t-1} + \epsilon _{t}
+
+\epsilon _{t} \sim N(0, var = 1.69)
+
+Based on this simulated time series, estimate an ARIMA(1,0,1) model. What is the value of the AR parameter?
+
+```{r}
+set.seed(81)
+
+# set number of observations
+n_T <- 384
+
+# set model's parameters
+arima_param <- list(ar = 0.4, 
+                    ma = -0.11)
+my_sd <- sqrt(1.69)
+
+# simulate model
+my_ts <- stats::arima.sim(
+  n = n_T, 
+  model = arima_param, 
+  sd = my_sd
+)
+
+stats::arima(
+  my_ts, 
+  order = c(1,0,1))
+
+```
+
+## Questão 14
+
+Load the data from file EX_SP500-stocks.rds and, based on the information for stock AFL, estimate an ARIMA(2, 0, 2) model for the returns of adjusted prices. What is the sum of all AR parameters?
+
+```{r}
+tickers <- c('AFL')
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+modelo_arima <- stats::arima(
+  df_base$return_AFL, 
+  order = c(2, 0, 2))
+
+modelo_arima$coef[1:2] |> sum()
+
+```
+
+## Questão 15
+
+Again, load the data from file EX_SP500-stocks.rds and, based on the information for stock TWTR, estimate an ARIMA(2, 0, 1) model for the returns of adjusted prices. Based on the estimated model, what is the forecasted return for t+1
+
+```{r}
+tickers <- c('TWTR')
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+modelo_arima <- stats::arima(
+  df_base$return_TWTR, 
+  order = c(2, 0, 1))
+
+modelo_arima
+
+forecast::forecast(modelo_arima, h = 1)
+```
+
+## Questão 16
+
+Use function forecast::auto.arima to estimate the best model for the adjusted returns of stock TWTR from file EX_SP500-stocks.rds. Using the AIC criteria (see input ic in auto.arima). What is the optimal lag for the AR parameter?
+
+```{r}
+tickers <- c('TWTR')
+
+df_base <- df_sp500 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+forecast::auto.arima(
+  x = df_base$return_TWTR,
+  ic = 'aic')
+
+```
+
+## Questão 17
+
+Load the data from file EX_B3-stocks.rds and keep all data for the following assets: BBDC4.SA, ECOR3.SA, LREN3.SA, BRML3.SA, TOTS3.SA, AZUL4.SA, SANB11.SA.Be aware that youll need to create the return column. Using the filtered data, estimate the best arima model for each asset with function forecast::auto.arima using a maximum order (input max.order) of 3. How many stocks have AR lag order equal to 0?
+
+```{r}
+
+arquivo <- data_path('EX_B3-stocks.rds')
+
+df_b3 <- readRDS(arquivo)
+
+tickers <- c('BBDC4.SA', 'ECOR3.SA', 'LREN3.SA', 'BRML3.SA', 
+             'TOTS3.SA', 'AZUL4.SA', 'SANB11.SA')
+
+df_base <- df_b3 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+
+# ativos a modelar
+ativos <- names(df_base)[-c(1)]
+
+modelos_arima <- list()
+
+# gerar modelo apra cada ativo
+for (i in 1:length(ativos)){
+
+  ativo <- ativos[i]
+  
+  modelo <- forecast::auto.arima(df_base[, paste(ativo)], max.order = 3)
+  
+  modelos_arima[[i]] <- modelo$coef
+}
+
+names(modelos_arima) <- ativos
+
+modelos_arima
+
+```
+
+## Questão 18
+
+Again, load the data from file EX_B3-stocks.rds and keep rows for the following assets: YDUQ3.SA, ENGI11.SA, BBDC4.SA, SANB11.SA, RAIL3.SA, BRML3.SA, LREN3.SA.Now, use function forecast::auto.arima to estimate the best model using a maximum order (input max.order) of 6. Based on the arima models perform, for all available assets, a t+1 forecast for the conditional mean. Which stock has the highest value of forecasted return at time t+1?
+
+```{r}
+tickers <- c('YDUQ3.SA', 'ENGI11.SA', 'BBDC4.SA', 'SANB11.SA', 
+             'RAIL3.SA', 'BRML3.SA', 'LREN3.SA')
+
+df_base <- df_b3 |> 
+  filter(ticker %in% tickers) |> 
+  mutate(ticker = str_replace(ticker, '\\^', '')) |> 
+  select(ref_date, ticker, ret_adjusted_prices)
+
+df_base <- df_base |> pivot_wider(id_cols = ref_date,
+                             names_from = ticker,
+                             names_prefix = 'return_',
+                             values_from = ret_adjusted_prices)
+
+
+# ativos a modelar
+ativos <- names(df_base |> select(-ref_date))
+
+modelos_arima <- list()
+
+# gerar modelo apra cada ativo
+for (i in 1:length(ativos)){
+
+  ativo <- ativos[i]
+  
+  modelo <- forecast::auto.arima(df_base[, paste(ativo)], max.order = 6)
+  
+  x <- forecast::forecast(modelo, h = 1)
+  
+  x <- x$mean
+  
+  modelos_arima[[i]] <- x[1]
+}
+
+names(modelos_arima) <- ativos
+
+modelos_arima[which.max(modelos_arima)]
+
+```
+
+## Questão 19
+
+Consider the following ARMA-GARCH process:
+
+\begin{aligned}
+y _t =&   + 0.1 y_{t-1} + -0.05 \epsilon_{t-1} + \epsilon _t \\
+\epsilon _t \sim& N \left(0, h _t \right) \\
+h _t =& 0.0001 + 0.1 \epsilon ^2 _{t-1}+ 0.8 h_{t-1}
+\end{aligned}
+Using set.seed = 17, simulate 754 observations of the model. What is the result for the last simulated value in the series? Tip: Use set.seed() in code line right before calling garchSim().
+
+```{r}
+
+# set list with model spec
+my_sim_garch = list(
+  omega = 0.0001,
+  alpha = 0.1,
+  beta = 0.8,
+  mu = 0,
+  ar = 0.1, 
+  ma = -0.05
+    
+)
+
+# set garch spec                
+spec = fGarch::garchSpec(
+  model = my_sim_garch
+)
+
+set.seed(17)
+x <- garchSim(spec = spec, n = 754)
+
+x |> last()
+```
+
+## Questão 20
+
+Consider the following ARMA-GARCH process:
+
+\begin{aligned}
+y _t =&   + 0.15 y_{t-1} + -0.15 \epsilon_{t-1} + \epsilon _t \\
+\epsilon _t \sim& N \left(0, h _t \right) \\
+h _t =& 0.0001 + 0.1 \epsilon ^2 _{t-1}+ 0.7 h_{t-1}
+\end{aligned}
+Using set.seed = 54, do 182 simulations of the process for 705 time periods. Looking at the simulated value at time 676 for all simulations, what is the maximum found value across all simulations? Tip: Make sure set.seed is used after calling garchSpec(). Somehow this function, garchSpec(), is using something random and messes up the queue needed for solving the exercise.
+
+```{r}
+
+#############
+
+spec = garchSpec(model = list(
+  ar = 0.15,
+  ma = -0.15,
+  omega = 0.0001,
+  alpha = 0.1,
+  beta = 0.7
+))
+nsim <- 182
+sim <- list()
+
+set.seed(54)
+
+for(i in 1:nsim){
+  sim[[i]] <- garchSim(spec, n = 705)
+}
+
+max(sapply(sim, "[[", 676))
+
+
+```
+
+## Questão 21
+
+Using package fGarch, estimate a ARMA(1,1)-GARCH(1,1) model for the returns of stock NLOK, available in file EX_SP500-stocks.rds. What is the value of the ARCH coefficient (alpha1)?
+
+```{r}
+
+arquivo <- data_path('EX_SP500-stocks.rds')
+
+df_base <- readRDS(arquivo) |> 
+  na.omit() |> 
+  filter(ticker == 'NLOK')
+
+#estimate garch model
+my_garchfit <- fGarch::garchFit(
+  data = df_base$ret_adjusted_prices, 
+  formula = ~ arma(1,1) + garch(1,1), 
+  trace = FALSE
+)
+
+print(my_garchfit)
+
+```
+
+## Questão 22
+
+While package forecast offers function auto.arima for estimating the best ARIMA model, there is no such thing for fGarch. As a clever R analyst, create your own auto.garch function that takes as input a series of returns, a single maximum lag in AR, MA, ARCH and GARCH parameters, and outputs the best Garch model using the AIC criteria. That is, the best model is the one with the lowest value of AIC (see element @fit$ics from the output of garchFit. Notice that you will need to iterate all possible combinations between the AR, MA, ARCH and GARCH parameters, from 1 to max.lag for each. [TIP: function expand.grid can help with this operation!].
+
+Using data available in file EX_SP500-stocks.rds for stock ^GSPC, use your newly created function with max.lag = 2. What is the best Arma-Garch formula for the dataset?
+
+```{r}
+
+df_ticker <- filter(df_sp500, ticker == "^GSPC")
+
+max_lags <- c(2,2,2,2)
+
+auto_garch <- function(data, max_lags, crit)
+{  
+  ar <- seq(1:max_lags[1])
+  ma <- seq(1:max_lags[2])
+  alpha <- seq(1:max_lags[3])
+  beta <- seq(1:max_lags[4])
+  iter <- expand.grid(ar, ma, alpha, beta)
+  
+  results <- list()
+  
+  for(i in 1:nrow(iter))
+  {
+    formula <- paste0("~arma(", iter[i,1], ",", iter[i,2], ")+garch(", iter[i,3], ",", iter[i,4], ")")
+    fit <- garchFit(data, formula = as.formula(formula), trace = FALSE)
+    stat <- fit@fit$ics[crit]
+    results[[i]] <- list()
+    results[[i]][[1]] <- formula
+    results[[i]][[2]] <- stat
+  }
+  
+  aic <- which.min(sapply(results, "[[", 2))
+  best <- sapply(results, "[[", 1)[aic]
+  
+  
+  return(garchFit(data, formula = as.formula(best), trace = FALSE))
+}
+
+sim <- auto_garch(df_ticker$ret_adjusted_prices, max_lags, "AIC")
+sim@formula
+
+```
+
+## Questão 23
+
+Improve your previous function by adding an extra argument, the criteria (AIC, BIC, SIC or HQIC) for selecting the best model.
+
+Using data available in file EX_SP500-stocks.rds for stock BA, use your newly created function with max.lag = 2 and criteria = HQIC. What is the (new) best formula for the dataset?
+
+```{r}
+df_ticker <- filter(df_sp500, ticker == "BA")
+
+max_lags <- c(2,2,2,2)
+
+sim <- auto_garch(df_ticker$ret_adjusted_prices, 
+                  max_lags, "HQIC")
+
+sim@formula
+
+```
+
+## Questão 24
+
+Considere o seguinte modelo Random Walk:
+
+\begin{aligned}
+R_t &= 0.001 + \epsilon _t \\
+\epsilon _t &\sim N\left(0, 0.01 \right) \\
+P_t&=P_{t-1} \exp (R_t) \\
+P_0 &= 27
+\end{aligned}
+Utilizando set.seed(89), simule este processo estocástico por 100 vezes (n.T = 100). Qual é o valor do último preço da série simulada? Dica: Na simulação do erro da distribuição Normal, o desvio padrão é dado por sqrt(0.01).
+
+```{r}
+
+set.seed(89)
+C <- 0.001
+my_sd = sqrt(0.01)
+nT <- 100
+
+R <- numeric(nT)
+P <- numeric(nT)
+P[1] <- 27
+
+for (t in seq(2, nT)) {
+  R[t] <- C + rnorm(1, 0, my_sd)
+  P[t] <- P[t-1]*exp(R[t])
+  
+}
+
+P |> last()
+
+```
+
+## Questão 25
+
+Considere o seguinte modelo RW:
+
+\begin{aligned}
+R_t &= 0.01 + \epsilon _t \\
+\epsilon _t &\sim N\left(0, 0.01 \right) \\
+P_t&=P_{t-1} \exp (R_t) \\
+P_0 &= 21
+\end{aligned}
+Com base neste, construa 1000 simulações de preços para 100 períodos de tempo. Com base na matriz de preços, onde cada linha é um período de tempo e cada coluna é uma simulação, qual é a soma dos preços finais (última linha) de todas as simulações? (Desta vez use set.seed(36) antes da rodagem do código).
+
+```{r}
+
+set.seed(36)
+C <- 0.01
+my_sd = sqrt(0.01)
+nT <- 100
+
+R <- numeric(nT)
+P <- numeric(nT)
+P[1] <- 21
+
+todas_simulacoes <- numeric(1000)
+
+for (i in 1:1000){
+  
+  for (t in seq(2, nT)) {
+    R[t] <- C + rnorm(1, 0, my_sd)
+    P[t] <- P[t-1]*exp(R[t])
+  
+  }
+  
+  todas_simulacoes[i] <- P[100]
+}
+
+todas_simulacoes |> sum()
+
+
+```
+
+## Questão 26
+
+Considere o seguinte modelo RW:
+
+\begin{aligned}
+R_t &= 0.01 + \epsilon _t \\
+\epsilon _t &\sim N\left(0, 0.01 \right) \\
+P_t&=P_{t-1} \exp (R_t) \\
+P_0 &= 14
+\end{aligned}
+Considere uma opção de compra do tipo européia com as seguintes características:
+
+Nome	Valor
+Maturidade (dias)	50
+Preço de exercicio	18
+Assumindo uma taxa de juros para o período inteiro de 50 dias como 15,00%, use o modelo RW anterior para calcular o preço justo desta opção de compra com 1000 simulações. (Utilize set.seed(92) antes da rodagem do código).
+
+```{r}
+create_rnd_walk <- function(
+    i_sim,
+    nT, C, P_0, my_sd
+) {
+  
+  R <- numeric(nT)
+  P <- numeric(nT)
+  P[1] <- P_0
+  
+  for (t in seq(2, nT)) {
+    #cli::cli_alert_info("simulation {i_sim}, price {t}")
+    R[t] <- C + rnorm(1, 0, my_sd)
+    P[t] <- P[t-1]*exp(R[t])
+    
+  }
+  
+  df_out <- tibble::tibble(
+    i_sim = i_sim,
+    t = 1:nT,
+    P = P
+  )
+  
+  return(df_out)
+}
+
+set.seed(92)
+
+C <- 0.01
+my_sd = sqrt(0.01)
+nT <- 50
+P_0 <- 14
+n_sim <- 1000
+
+r <- 0.15
+C_strike_price <- 18
+
+df_sim <- purrr::map_df(
+  1:n_sim,
+  create_rnd_walk,
+  nT = nT,
+  C = C,
+  P_0 = P_0,
+  my_sd = my_sd
+)
+
+library(ggplot2)
+
+prices_at_T <- df_sim |>
+  dplyr::filter(t == nT) |>
+  dplyr::mutate(
+    payoff_C = dplyr::if_else(
+      P > C_strike_price, P-C_strike_price,0
+    )
+)
+
+
+C_premium <- mean(prices_at_T$payoff_C)/(1+r)
+C_premium
+
+
+```
+
+## Questão 27
+
+Utilizando set.seed(57) e nSim =1000, considere uma opção de venda do tipo européia com as seguintes características:
+
+Nome	Valor
+Maturidade (dias)	50
+Preço de exercicio	15
+Usando o seguinte modelo RW:
+
+\begin{aligned}
+R_t &= 0.01 + \epsilon _t \\
+\epsilon _t &\sim N\left(0, 0.01 \right) \\
+P_t&=P_{t-1} \exp (R_t) \\
+P_0 &= 10
+\end{aligned}
+Qual é o preço justo desta opção de venda?
+
+```{r}
+reate_rnd_walk <- function(
+    i_sim,
+    nT, C, P_0, my_sd
+) {
+  
+  R <- numeric(nT)
+  P <- numeric(nT)
+  P[1] <- P_0
+  
+  for (t in seq(2, nT)) {
+    #cli::cli_alert_info("simulation {i_sim}, price {t}")
+    R[t] <- C + rnorm(1, 0, my_sd)
+    P[t] <- P[t-1]*exp(R[t])
+    
+  }
+  
+  df_out <- tibble::tibble(
+    i_sim = i_sim,
+    t = 1:nT,
+    P = P
+  )
+  
+  return(df_out)
+}
+
+set.seed(57)
+
+C <- 0.01
+my_sd = sqrt(0.01)
+nT <- 50
+P_0 <- 10
+n_sim <- 1000
+
+r <- 0.15
+P_strike_price <- 15
+
+df_sim <- purrr::map_df(
+  1:n_sim,
+  create_rnd_walk,
+  nT = nT,
+  C = C,
+  P_0 = P_0,
+  my_sd = my_sd
+)
+
+library(ggplot2)
+
+prices_at_T <- df_sim |>
+  dplyr::filter(t == nT) |>
+  dplyr::mutate(
+    payoff_P = dplyr::if_else(
+      P < P_strike_price, P_strike_price - P,0
+    )
+)
+
+P_premium <- mean(prices_at_T$payoff_P)/(1+r)
+P_premium
+
+```
+
+## Questão 28
+
+Considere um tipo específico de contrato financeiro onde existe uma restrição objetiva dos retornos, conforme o processo estocástico destacado a seguir.
+
+Se 0.01 + \epsilon _t < -0.01 então R_t = -0.005
+
+Se 0.01 + \epsilon _t >= -0.01 então R_t = 0.01 + \epsilon _t
+
+\begin{aligned}
+R_t &= 0.01 + \epsilon _t \\
+\epsilon _t &\sim N\left(0, 0.01 \right) \\
+P_t &= P_{t-1} \exp (R_t) \\
+P_0 &=  149
+\end{aligned}
+Utilizando de set.seed(29), simule este processo estocástico para 88 períodos de tempo (n.T = 88). Qual é o valor do último preço da série resultante?
+
+```{r}
+
+set.seed(29)
+C <- 0.01
+my_sd = sqrt(0.01)
+nT <- 88
+
+R <- numeric(nT)
+P <- numeric(nT)
+P[1] <- 149
+
+for (t in seq(2, nT)) {
+  x <- C + rnorm(1, 0, my_sd)
+  
+  x <- if_else(x < - 0.01, -0.005, x)
+    
+  R[t] <- x
+    
+  P[t] <- P[t-1]*exp(R[t])
+  
+}
+  
+P[nT]
+
+```
